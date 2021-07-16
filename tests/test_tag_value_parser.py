@@ -9,10 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import sys
 from unittest import TestCase
 
@@ -216,7 +212,7 @@ class TestParser(TestCase):
         'SPDXID: SPDXRef-Package',
         'PackageVersion: Version 0.9.2',
         'PackageDownloadLocation: http://example.com/test',
-        'FilesAnalyzed: False',
+        'FilesAnalyzed: True',
         'PackageSummary: <text>Test package</text>',
         'PackageSourceInfo: <text>Version 1.0 of test</text>',
         'PackageFileName: test-1.0.zip',
@@ -303,7 +299,7 @@ class TestParser(TestCase):
         assert document.package.version == 'Version 0.9.2'
         assert len(document.package.licenses_from_files) == 2
         assert (document.package.conc_lics.identifier == 'LicenseRef-2.0 AND Apache-2.0')
-        assert document.package.files_analyzed == 'False'
+        assert document.package.files_analyzed == True
         assert document.package.comment == 'Comment on the package.'
         assert document.package.pkg_ext_refs[-1].category == 'SECURITY'
         assert document.package.pkg_ext_refs[-1].pkg_ext_ref_type == 'cpe23Type'

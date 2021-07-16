@@ -9,10 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 from spdx.parsers import rdfbuilders
 from spdx.parsers import tagvaluebuilders
 from spdx.parsers import validations
@@ -170,12 +166,9 @@ class FileBuilder(rdfbuilders.FileBuilder):
         Raise CardinalityError if more than one.
         """
         if self.has_package(doc) and self.has_file(doc):
-            if not self.file_notice_set:
-                self.file_notice_set = True
-                self.file(doc).notice = text
-                return True
-            else:
-                raise CardinalityError("File::Notice")
+            self.file_notice_set = True
+            self.file(doc).notice = text
+            return True
         else:
             raise OrderError("File::Notice")
 

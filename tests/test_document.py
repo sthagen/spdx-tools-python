@@ -9,10 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import os
 import shutil
 import tempfile
@@ -80,6 +76,7 @@ class TestDocument(TestCase):
                        'Sample_Document-V2.1', spdx_id='SPDXRef-DOCUMENT',
                        namespace='https://spdx.org/spdxdocs/spdx-example-444504E0-4F89-41D3-9A0C-0305E82C3301')
         pack = doc.package = Package('some/path', NoAssert())
+        pack.check_sum = 'SOME-SHA1'
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
@@ -102,7 +99,7 @@ class TestDocument(TestCase):
             'Package declared license must be instance of spdx.utils.SPDXNone '
             'or spdx.utils.NoAssert or spdx.document.License'
         ]
-        assert expected == messages
+        assert sorted(expected) == sorted(messages)
 
     def test_document_is_valid_when_using_or_later_licenses(self):
         doc = Document(Version(2, 1), License.from_identifier('CC0-1.0'),
@@ -131,9 +128,33 @@ class TestDocument(TestCase):
         package.add_lics_from_file(lic1)
         package.add_file(file1)
         messages = []
-        is_valid = doc.validate(messages)
-        assert is_valid
+        messages = doc.validate(messages)
         assert not messages
+
+    def test_document_multiple_packages(self):
+        doc = Document(Version(2, 1), License.from_identifier('CC0-1.0'),
+                       'Sample_Document-V2.1', spdx_id='SPDXRef-DOCUMENT',
+                       namespace='https://spdx.org/spdxdocs/spdx-example-444504E0-4F89-41D3-9A0C-0305E82C3301')
+        doc.creation_info.add_creator(Tool('ScanCode'))
+        doc.creation_info.set_created_now()
+
+        package1 = Package(name='some/path1', download_location=NoAssert())
+        package1.spdx_id = 'SPDXRef-Package1'
+        package1.cr_text = 'Some copyrught'
+        package1.files_verified = False
+        package1.license_declared = NoAssert()
+        package1.conc_lics = NoAssert()
+        doc.add_package(package1)
+
+        package2 = Package(name='some/path2', download_location=NoAssert())
+        package2.spdx_id = 'SPDXRef-Package2'
+        package2.cr_text = 'Some copyrught'
+        package2.files_verified = False
+        package2.license_declared = NoAssert()
+        package2.conc_lics = NoAssert()
+        doc.add_package(package2)
+
+        assert len(doc.packages) == 2
 
 
 class TestWriters(TestCase):

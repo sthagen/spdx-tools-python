@@ -9,10 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 from unittest import TestCase
 
 import tests.testing_utils as testing_utils
@@ -476,7 +472,6 @@ class TestPackageBuilder(TestCase):
         self.document = Document()
         self.entity_builder = builders.EntityBuilder()
 
-    @testing_utils.raises(builders.CardinalityError)
     def test_package_cardinality(self):
         assert self.builder.create_package(self.document, "pkg1")
         self.builder.create_package(self.document, "pkg2")

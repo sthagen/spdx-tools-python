@@ -9,10 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 from rdflib import BNode
 from rdflib import Graph
 from rdflib import Literal
@@ -796,7 +792,8 @@ class PackageWriter(LicenseWriter):
         )
         self.graph.add(down_loc_node)
         # Handle package verification
-        verif_node = self.package_verif_node(package)
+        if package.files_analyzed != False:
+            verif_node = self.package_verif_node(package)
         verif_triple = (
             package_node,
             self.spdx_namespace.packageVerificationCode,
@@ -843,8 +840,8 @@ class PackageWriter(LicenseWriter):
         Return a node that represents the package in the graph.
         Call this function to write package info.
         """
-        # TODO: In the future this may be a list to support SPDX 2.0
-        return self.create_package_node(self.document.package)
+        return [self.create_package_node(x)
+                for x in self.document.packages]
 
     def handle_package_has_file_helper(self, pkg_file):
         """
@@ -1012,9 +1009,9 @@ class Writer(
             self.graph.add((doc_node, self.spdx_namespace.referencesFile, file_node))
         self.add_file_dependencies()
         # Add package
-        package_node = self.packages()
-        package_triple = (doc_node, self.spdx_namespace.describesPackage, package_node)
-        self.graph.add(package_triple)
+        for package_node in self.packages():
+            package_triple = (doc_node, self.spdx_namespace.describesPackage, package_node)
+            self.graph.add(package_triple)
         """# Add relationship
         relate_node = self.relationships()
         relate_triple = (doc_node, self.spdx_namespace.relationship, relate_node)

@@ -9,12 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import six
-from six.moves import zip_longest
+from itertools import zip_longest
 
 from spdx import document
 from spdx import file as spdx_file
@@ -133,7 +128,7 @@ def write_file(spdx_file, out):
     for lics in sorted(spdx_file.licenses_in_file):
         write_value("LicenseInfoInFile", lics, out)
 
-    if isinstance(spdx_file.copyright, six.string_types):
+    if isinstance(spdx_file.copyright, str):
         write_text_value("FileCopyrightText", spdx_file.copyright, out)
     else:
         write_value("FileCopyrightText", spdx_file.copyright, out)
@@ -232,7 +227,8 @@ def write_package(package, out):
     if package.has_optional_field("check_sum"):
         write_value("PackageChecksum", package.check_sum.to_tv(), out)
 
-    write_value("PackageVerificationCode", format_verif_code(package), out)
+    if package.has_optional_field("verif_code"):
+        write_value("PackageVerificationCode", format_verif_code(package), out)
 
     if package.has_optional_field("description"):
         write_text_value("PackageDescription", package.description, out)
@@ -266,7 +262,7 @@ def write_package(package, out):
 
     # cr_text is either free form text or NONE or NOASSERTION.
     if package.cr_text:
-        if isinstance(package.cr_text, six.string_types):
+        if isinstance(package.cr_text, str):
             write_text_value("PackageCopyrightText", package.cr_text, out)
         else:
             write_value("PackageCopyrightText", package.cr_text, out)
@@ -360,8 +356,9 @@ def write_document(document, out, validate=True):
         write_separators(out)
 
     # Write out package info
-    write_package(document.package, out)
-    write_separators(out)
+    for package in document.packages:
+        write_package(package, out)
+        write_separators(out)
 
     # Write out snippet info
     for snippet in document.snippet:

@@ -9,15 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import re
 
 from ply import yacc
-import six
-
 from spdx import config
 from spdx import utils
 from spdx.parsers.builderexceptions import CardinalityError
@@ -41,12 +35,12 @@ ERROR_MESSAGES = {
     "DOC_NAME_VALUE": "DocumentName must be single line of text, line: {0}",
     "DOC_SPDX_ID_VALUE": "Invalid SPDXID value, SPDXID must be SPDXRef-DOCUMENT, line: {0}",
     "EXT_DOC_REF_VALUE": "ExternalDocumentRef must contain External Document ID, SPDX Document URI and Checksum"
-    "in the standard format, line:{0}.",
+                         "in the standard format, line:{0}.",
     "DOC_COMMENT_VALUE_TYPE": "DocumentComment value must be free form text between <text></text> tags, line:{0}",
     "DOC_NAMESPACE_VALUE": 'Invalid DocumentNamespace value {0}, must contain a scheme (e.g. "https:") '
-    'and should not contain the "#" delimiter, line:{1}',
+                           'and should not contain the "#" delimiter, line:{1}',
     "DOC_NAMESPACE_VALUE_TYPE": 'Invalid DocumentNamespace value, must contain a scheme (e.g. "https:") '
-    'and should not contain the "#" delimiter, line: {0}',
+                                'and should not contain the "#" delimiter, line: {0}',
     "REVIEWER_VALUE_TYPE": "Invalid Reviewer value must be a Person, Organization or Tool. Line: {0}",
     "CREATOR_VALUE_TYPE": "Invalid Reviewer value must be a Person, Organization or Tool. Line: {0}",
     "REVIEW_DATE_VALUE_TYPE": "ReviewDate value must be date in ISO 8601 format, line: {0}",
@@ -56,8 +50,8 @@ ERROR_MESSAGES = {
     "ANNOTATION_COMMENT_VALUE_TYPE": "AnnotationComment value must be free form text between <text></text> tags, line:{0}",
     "ANNOTATION_TYPE_VALUE": 'AnnotationType must be "REVIEW" or "OTHER". Line: {0}',
     "ANNOTATION_SPDX_ID_VALUE": 'SPDXREF must be ["DocumentRef-"[idstring]":"]SPDXID where'
-    '["DocumentRef-"[idstring]":"] is an optional reference to an external SPDX document and'
-    'SPDXID is a unique string containing letters, numbers, ".","-".',
+                                '["DocumentRef-"[idstring]":"] is an optional reference to an external SPDX document and'
+                                'SPDXID is a unique string containing letters, numbers, ".","-".',
     "A_BEFORE_B": "{0} Can not appear before {1}, line: {2}",
     "PACKAGE_NAME_VALUE": "PackageName must be single line of text, line: {0}",
     "PKG_SPDX_ID_VALUE": 'SPDXID must be "SPDXRef-[idstring]" where [idstring] is a unique string containing '
@@ -81,11 +75,12 @@ ERROR_MESSAGES = {
     "PKG_COMMENT_VALUE": "PackageComment must be free form text, line: {0}",
     "PKG_EXT_REF_VALUE": "ExternalRef must contain category, type, and locator in the standard format, line:{0}.",
     "PKG_EXT_REF_COMMENT_VALUE": "ExternalRefComment must be free form text, line:{0}",
+    "PKG_VERF_CODE_VALUE": "VerificationCode doesn't match verifcode form, line:{0}",
     "FILE_NAME_VALUE": "FileName must be a single line of text, line: {0}",
     "FILE_COMMENT_VALUE": "FileComment must be free form text, line:{0}",
     "FILE_TYPE_VALUE": "FileType must be one of OTHER, BINARY, SOURCE or ARCHIVE, line: {0}",
     "FILE_SPDX_ID_VALUE": 'SPDXID must be "SPDXRef-[idstring]" where [idstring] is a unique string containing '
-    'letters, numbers, ".", "-".',
+                          'letters, numbers, ".", "-".',
     "FILE_ATTRIBUTION_TEXT_VALUE": "FileAttributionText must be free form text, line: {0}",
     "FILE_CHKSUM_VALUE": "FileChecksum must be a single line of text starting with 'SHA1:', line:{0}",
     "FILE_LICS_CONC_VALUE": "LicenseConcluded must be NOASSERTION, NONE, license identifier or license list, line:{0}",
@@ -109,18 +104,18 @@ ERROR_MESSAGES = {
     "RELATIONSHIP_COMMENT_VALUE": "RelationshipComment value must be free form text between <text></text> tags, line:{0}",
     "PKG_CPY_TEXT_VALUE": "Package copyright text must be free form text, line: {0}",
     "SNIP_SPDX_ID_VALUE": 'SPDXID must be "SPDXRef-[idstring]" where [idstring] is a unique string '
-    'containing letters, numbers, ".", "-".',
+                          'containing letters, numbers, ".", "-".',
     "SNIPPET_NAME_VALUE": "SnippetName must be a single line of text, line: {0}",
     "SNIP_COMMENT_VALUE": "SnippetComment must be free form text, line: {0}",
     "SNIP_COPYRIGHT_VALUE": "SnippetCopyrightText must be one of NOASSERTION, NONE or free form text, line: {0}",
     "SNIP_LICS_COMMENT_VALUE": "SnippetLicenseComments must be free form text, line: {0}",
     "SNIPPET_ATTRIBUTION_TEXT_VALUE": "SnippetAttributionText must be free form text, line: {0}",
     "SNIP_FILE_SPDXID_VALUE": 'SnippetFromFileSPDXID must be ["DocumentRef-"[idstring]":"] SPDXID '
-    "where DocumentRef-[idstring]: is an optional reference to an external"
-    "SPDX Document and SPDXID is a string containing letters, "
-    'numbers, ".", "-".',
+                              "where DocumentRef-[idstring]: is an optional reference to an external"
+                              "SPDX Document and SPDXID is a string containing letters, "
+                              'numbers, ".", "-".',
     "SNIP_LICS_CONC_VALUE": "SnippetLicenseConcluded must be NOASSERTION, NONE, license identifier "
-    "or license list, line:{0}",
+                            "or license list, line:{0}",
     "SNIP_LICS_INFO_VALUE": "LicenseInfoInSnippet must be NOASSERTION, NONE or license identifier, line: {0}",
 }
 
@@ -233,10 +228,7 @@ class Parser(object):
     def p_lic_xref_1(self, p):
         """lic_xref : LICS_CRS_REF LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_lic_xref(self.document, value)
         except OrderError:
             self.order_error("LicenseCrossReference", "LicenseName", p.lineno(1))
@@ -250,10 +242,7 @@ class Parser(object):
     def p_lic_comment_1(self, p):
         """lic_comment : LICS_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_lic_comment(self.document, value)
         except OrderError:
             self.order_error("LicenseComment", "LicenseID", p.lineno(1))
@@ -283,11 +272,7 @@ class Parser(object):
 
     def p_extr_lic_name_value_1(self, p):
         """extr_lic_name_value : LINE"""
-        if six.PY2:
-            p[0] = p[1].decode(encoding="utf-8")
-        else:
-            p[0] = p[1]
-
+        p[0] = p[1]
     def p_extr_lic_name_value_2(self, p):
         """extr_lic_name_value : NO_ASSERT"""
         p[0] = utils.NoAssert()
@@ -295,10 +280,7 @@ class Parser(object):
     def p_extr_lic_text_1(self, p):
         """extr_lic_text : LICS_TEXT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_lic_text(self.document, value)
         except OrderError:
             self.order_error("ExtractedText", "LicenseID", p.lineno(1))
@@ -314,10 +296,7 @@ class Parser(object):
     def p_extr_lic_id_1(self, p):
         """extr_lic_id : LICS_ID LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_lic_id(self.document, value)
         except SPDXValueError:
             self.error = True
@@ -368,10 +347,7 @@ class Parser(object):
     def p_prj_uri_art_2(self, p):
         """prj_uri_art : ART_PRJ_URI LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_atrificat_of_project(self.document, "uri", value)
         except OrderError:
             self.order_error("ArtificatOfProjectURI", "FileName", p.lineno(1))
@@ -407,10 +383,7 @@ class Parser(object):
     def p_prj_name_art_1(self, p):
         """prj_name_art : ART_PRJ_NAME LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_atrificat_of_project(self.document, "name", value)
         except OrderError:
             self.order_error("ArtifactOfProjectName", "FileName", p.lineno(1))
@@ -424,10 +397,7 @@ class Parser(object):
     def p_file_dep_1(self, p):
         """file_dep : FILE_DEP LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_file_dep(self.document, value)
         except OrderError:
             self.order_error("FileDependency", "FileName", p.lineno(1))
@@ -441,10 +411,7 @@ class Parser(object):
     def p_file_contrib_1(self, p):
         """file_contrib : FILE_CONTRIB LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_file_contribution(self.document, value)
         except OrderError:
             self.order_error("FileContributor", "FileName", p.lineno(1))
@@ -458,10 +425,7 @@ class Parser(object):
     def p_file_notice_1(self, p):
         """file_notice : FILE_NOTICE TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_notice(self.document, value)
         except OrderError:
             self.order_error("FileNotice", "FileName", p.lineno(1))
@@ -491,11 +455,7 @@ class Parser(object):
 
     def p_file_cr_value_1(self, p):
         """file_cr_value : TEXT"""
-        if six.PY2:
-            p[0] = p[1].decode(encoding="utf-8")
-        else:
-            p[0] = p[1]
-
+        p[0] = p[1]
     def p_file_cr_value_2(self, p):
         """file_cr_value : NONE"""
         p[0] = utils.SPDXNone()
@@ -507,10 +467,7 @@ class Parser(object):
     def p_file_lics_comment_1(self, p):
         """file_lics_comment : FILE_LICS_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_license_comment(self.document, value)
         except OrderError:
             self.order_error("LicenseComments", "FileName", p.lineno(1))
@@ -526,10 +483,7 @@ class Parser(object):
     def p_file_attribution_text_1(self, p):
         """file_attribution_text : FILE_ATTRIBUTION_TEXT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_attribution_text(self.document, value)
         except CardinalityError:
             self.more_than_one_error("FileAttributionText", p.lineno(1))
@@ -570,10 +524,7 @@ class Parser(object):
     # License Identifier
     def p_file_lic_info_value_3(self, p):
         """file_lic_info_value : LINE"""
-        if six.PY2:
-            value = p[1].decode(encoding="utf-8")
-        else:
-            value = p[1]
+        value = p[1]
         p[0] = document.License.from_identifier(value)
 
     def p_conc_license_1(self, p):
@@ -586,10 +537,7 @@ class Parser(object):
 
     def p_conc_license_3(self, p):
         """conc_license : LINE"""
-        if six.PY2:
-            value = p[1].decode(encoding="utf-8")
-        else:
-            value = p[1]
+        value = p[1]
         ref_re = re.compile("LicenseRef-.+", re.UNICODE)
         if (p[1] in config.LICENSE_MAP.keys()) or (ref_re.match(p[1]) is not None):
             p[0] = document.License.from_identifier(value)
@@ -599,10 +547,7 @@ class Parser(object):
     def p_file_name_1(self, p):
         """file_name : FILE_NAME LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_name(self.document, value)
         except OrderError:
             self.order_error("FileName", "PackageName", p.lineno(1))
@@ -615,10 +560,7 @@ class Parser(object):
 
     def p_spdx_id(self, p):
         """spdx_id : SPDX_ID LINE"""
-        if six.PY2:
-            value = p[2].decode(encoding="utf-8")
-        else:
-            value = p[2]
+        value = p[2]
         if not self.builder.doc_spdx_id_set:
             self.builder.set_doc_spdx_id(self.document, value)
         elif not self.builder.package_spdx_id_set:
@@ -629,10 +571,7 @@ class Parser(object):
     def p_file_comment_1(self, p):
         """file_comment : FILE_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_comment(self.document, value)
         except OrderError:
             self.order_error("FileComment", "FileName", p.lineno(1))
@@ -663,10 +602,7 @@ class Parser(object):
     def p_file_chksum_1(self, p):
         """file_chksum : FILE_CHKSUM CHKSUM"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_file_chksum(self.document, value)
         except OrderError:
             self.order_error("FileChecksum", "FileName", p.lineno(1))
@@ -704,18 +640,11 @@ class Parser(object):
                            | ARCHIVE
                            | BINARY
         """
-        if six.PY2:
-            p[0] = p[1].decode(encoding="utf-8")
-        else:
-            p[0] = p[1]
-
+        p[0] = p[1]
     def p_pkg_desc_1(self, p):
         """pkg_desc : PKG_DESC TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_desc(self.document, value)
         except CardinalityError:
             self.more_than_one_error("PackageDescription", p.lineno(1))
@@ -731,10 +660,7 @@ class Parser(object):
     def p_pkg_comment_1(self, p):
         """pkg_comment : PKG_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_comment(self.document, value)
         except CardinalityError:
             self.more_than_one_error("PackageComment", p.lineno(1))
@@ -750,10 +676,7 @@ class Parser(object):
     def p_pkg_attribution_text_1(self, p):
         """pkg_attribution_text : PKG_ATTRIBUTION_TEXT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_attribution_text(self.document, value)
         except CardinalityError:
             self.more_than_one_error("PackageAttributionText", p.lineno(1))
@@ -771,10 +694,7 @@ class Parser(object):
     def p_pkg_summary_1(self, p):
         """pkg_summary : PKG_SUM TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_summary(self.document, value)
         except OrderError:
             self.order_error("PackageSummary", "PackageFileName", p.lineno(1))
@@ -805,10 +725,7 @@ class Parser(object):
     def p_pkg_ext_refs_1(self, p):
         """pkg_ext_ref : PKG_EXT_REF LINE"""
         try:
-            if six.PY2:
-                pkg_ext_info = p[2].decode(encoding="utf-8")
-            else:
-                pkg_ext_info = p[2]
+            pkg_ext_info = p[2]
             if len(pkg_ext_info.split()) != 3:
                 raise SPDXValueError
             else:
@@ -830,10 +747,7 @@ class Parser(object):
     def p_pkg_ext_ref_comment_1(self, p):
         """pkg_ext_ref_comment : PKG_EXT_REF_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_pkg_ext_ref_comment(self.document, value)
         except CardinalityError:
             self.more_than_one_error("ExternalRefComment", p.lineno(1))
@@ -846,11 +760,7 @@ class Parser(object):
 
     def p_pkg_cr_text_value_1(self, p):
         """pkg_cr_text_value : TEXT"""
-        if six.PY2:
-            p[0] = p[1].decode(encoding="utf-8")
-        else:
-            p[0] = p[1]
-
+        p[0] = p[1]
     def p_pkg_cr_text_value_2(self, p):
         """pkg_cr_text_value : NONE"""
         p[0] = utils.SPDXNone()
@@ -862,10 +772,7 @@ class Parser(object):
     def p_pkg_lic_comment_1(self, p):
         """pkg_lic_comment : PKG_LICS_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_license_comment(self.document, value)
         except OrderError:
             self.order_error("PackageLicenseComments", "PackageFileName", p.lineno(1))
@@ -918,10 +825,7 @@ class Parser(object):
 
     def p_pkg_lic_ff_value_3(self, p):
         """pkg_lic_ff_value : LINE"""
-        if six.PY2:
-            value = p[1].decode(encoding="utf-8")
-        else:
-            value = p[1]
+        value = p[1]
         p[0] = document.License.from_identifier(value)
 
     def p_pkg_lic_ff_2(self, p):
@@ -952,10 +856,7 @@ class Parser(object):
     def p_pkg_src_info_1(self, p):
         """pkg_src_info : PKG_SRC_INFO TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_source_info(self.document, value)
         except CardinalityError:
             self.more_than_one_error("PackageSourceInfo", p.lineno(1))
@@ -971,10 +872,7 @@ class Parser(object):
     def p_pkg_chksum_1(self, p):
         """pkg_chksum : PKG_CHKSUM CHKSUM"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_chk_sum(self.document, value)
         except OrderError:
             self.order_error("PackageChecksum", "PackageFileName", p.lineno(1))
@@ -990,10 +888,7 @@ class Parser(object):
     def p_pkg_verif_1(self, p):
         """pkg_verif : PKG_VERF_CODE LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_verif_code(self.document, value)
         except OrderError:
             self.order_error("PackageVerificationCode", "PackageName", p.lineno(1))
@@ -1027,11 +922,7 @@ class Parser(object):
 
     def p_pkg_home_value_1(self, p):
         """pkg_home_value : LINE"""
-        if six.PY2:
-            p[0] = p[1].decode(encoding="utf-8")
-        else:
-            p[0] = p[1]
-
+        p[0] = p[1]
     def p_pkg_home_value_2(self, p):
         """pkg_home_value : NONE"""
         p[0] = utils.SPDXNone()
@@ -1058,10 +949,7 @@ class Parser(object):
     def p_pkg_files_analyzed_1(self, p):
         """pkg_files_analyzed : PKG_FILES_ANALYZED LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_files_analyzed(self.document, value)
         except CardinalityError:
             self.more_than_one_error("FilesAnalyzed", p.lineno(1))
@@ -1078,11 +966,7 @@ class Parser(object):
 
     def p_pkg_down_value_1(self, p):
         """pkg_down_value : LINE """
-        if six.PY2:
-            p[0] = p[1].decode(encoding="utf-8")
-        else:
-            p[0] = p[1]
-
+        p[0] = p[1]
     def p_pkg_down_value_2(self, p):
         """pkg_down_value : NONE"""
         p[0] = utils.SPDXNone()
@@ -1140,10 +1024,7 @@ class Parser(object):
     def p_pkg_file_name(self, p):
         """pkg_file_name : PKG_FILE_NAME LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_file_name(self.document, value)
         except OrderError:
             self.order_error("PackageFileName", "PackageName", p.lineno(1))
@@ -1159,10 +1040,7 @@ class Parser(object):
     def p_package_version_1(self, p):
         """package_version : PKG_VERSION LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_pkg_vers(self.document, value)
         except OrderError:
             self.order_error("PackageVersion", "PackageName", p.lineno(1))
@@ -1178,10 +1056,7 @@ class Parser(object):
     def p_package_name(self, p):
         """package_name : PKG_NAME LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.create_package(self.document, value)
         except CardinalityError:
             self.more_than_one_error("PackageName", p.lineno(1))
@@ -1195,10 +1070,7 @@ class Parser(object):
     def p_snip_spdx_id(self, p):
         """snip_spdx_id : SNIPPET_SPDX_ID LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.create_snippet(self.document, value)
         except SPDXValueError:
             self.error = True
@@ -1214,10 +1086,7 @@ class Parser(object):
     def p_snippet_name(self, p):
         """snip_name : SNIPPET_NAME LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_snippet_name(self.document, value)
         except OrderError:
             self.order_error("SnippetName", "SnippetSPDXID", p.lineno(1))
@@ -1233,10 +1102,7 @@ class Parser(object):
     def p_snippet_comment(self, p):
         """snip_comment : SNIPPET_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_snippet_comment(self.document, value)
         except OrderError:
             self.order_error("SnippetComment", "SnippetSPDXID", p.lineno(1))
@@ -1256,10 +1122,7 @@ class Parser(object):
     def p_snippet_attribution_text_1(self, p):
         """snippet_attribution_text : SNIPPET_ATTRIBUTION_TEXT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_snippet_attribution_text(self.document, value)
         except CardinalityError:
             self.more_than_one_error("SnippetAttributionText", p.lineno(1))
@@ -1295,11 +1158,7 @@ class Parser(object):
 
     def p_snippet_cr_value_1(self, p):
         """snip_cr_value : TEXT"""
-        if six.PY2:
-            p[0] = p[1].decode(encoding="utf-8")
-        else:
-            p[0] = p[1]
-
+        p[0] = p[1]
     def p_snippet_cr_value_2(self, p):
         """snip_cr_value : NONE"""
         p[0] = utils.SPDXNone()
@@ -1311,10 +1170,7 @@ class Parser(object):
     def p_snippet_lic_comment(self, p):
         """snip_lic_comment : SNIPPET_LICS_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_snippet_lic_comment(self.document, value)
         except OrderError:
             self.order_error("SnippetLicenseComments", "SnippetSPDXID", p.lineno(1))
@@ -1334,10 +1190,7 @@ class Parser(object):
     def p_snip_from_file_spdxid(self, p):
         """snip_file_spdx_id : SNIPPET_FILE_SPDXID LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_snip_from_file_spdxid(self.document, value)
         except OrderError:
             self.order_error("SnippetFromFileSPDXID", "SnippetSPDXID", p.lineno(1))
@@ -1400,10 +1253,7 @@ class Parser(object):
 
     def p_snip_lic_info_value_3(self, p):
         """snip_lic_info_value : LINE"""
-        if six.PY2:
-            value = p[1].decode(encoding="utf-8")
-        else:
-            value = p[1]
+        value = p[1]
         p[0] = document.License.from_identifier(value)
 
     def p_reviewer_1(self, p):
@@ -1419,10 +1269,7 @@ class Parser(object):
     def p_review_date_1(self, p):
         """review_date : REVIEW_DATE DATE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_review_date(self.document, value)
         except CardinalityError:
             self.more_than_one_error("ReviewDate", p.lineno(1))
@@ -1438,10 +1285,7 @@ class Parser(object):
     def p_review_comment_1(self, p):
         """review_comment : REVIEW_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_review_comment(self.document, value)
         except CardinalityError:
             self.more_than_one_error("ReviewComment", p.lineno(1))
@@ -1467,10 +1311,7 @@ class Parser(object):
     def p_annotation_date_1(self, p):
         """annotation_date : ANNOTATION_DATE DATE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_annotation_date(self.document, value)
         except CardinalityError:
             self.more_than_one_error("AnnotationDate", p.lineno(1))
@@ -1486,10 +1327,7 @@ class Parser(object):
     def p_annotation_comment_1(self, p):
         """annotation_comment : ANNOTATION_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_annotation_comment(self.document, value)
         except CardinalityError:
             self.more_than_one_error("AnnotationComment", p.lineno(1))
@@ -1505,10 +1343,7 @@ class Parser(object):
     def p_annotation_type_1(self, p):
         """annotation_type : ANNOTATION_TYPE LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_annotation_type(self.document, value)
         except CardinalityError:
             self.more_than_one_error("AnnotationType", p.lineno(1))
@@ -1528,10 +1363,7 @@ class Parser(object):
     def p_annotation_spdx_id_1(self, p):
         """annotation_spdx_id : ANNOTATION_SPDX_ID LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_annotation_spdx_id(self.document, value)
         except CardinalityError:
             self.more_than_one_error("SPDXREF", p.lineno(1))
@@ -1547,10 +1379,7 @@ class Parser(object):
     def p_relationship_1(self, p):
         """relationship : RELATIONSHIP LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_relationship(self.document, value)
         except SPDXValueError:
             self.error = True
@@ -1568,10 +1397,7 @@ class Parser(object):
     def p_relationship_comment_1(self, p):
         """relationship_comment : RELATIONSHIP_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.add_relationship_comment(self.document, value)
         except OrderError:
             self.order_error("RelationshipComment", "Relationship", p.lineno(1))
@@ -1587,10 +1413,7 @@ class Parser(object):
     def p_lics_list_ver_1(self, p):
         """locs_list_ver : LIC_LIST_VER LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_lics_list_ver(self.document, value)
         except SPDXValueError:
             self.error = True
@@ -1608,10 +1431,7 @@ class Parser(object):
     def p_doc_comment_1(self, p):
         """doc_comment : DOC_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_doc_comment(self.document, value)
         except CardinalityError:
             self.more_than_one_error("DocumentComment", p.lineno(1))
@@ -1625,10 +1445,7 @@ class Parser(object):
     def p_doc_namespace_1(self, p):
         """doc_namespace : DOC_NAMESPACE LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_doc_namespace(self.document, value)
         except SPDXValueError:
             self.error = True
@@ -1646,10 +1463,7 @@ class Parser(object):
     def p_data_license_1(self, p):
         """data_lics : DOC_LICENSE LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_doc_data_lics(self.document, value)
         except SPDXValueError:
             self.error = True
@@ -1667,10 +1481,7 @@ class Parser(object):
     def p_doc_name_1(self, p):
         """doc_name : DOC_NAME LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_doc_name(self.document, value)
         except CardinalityError:
             self.more_than_one_error("DocumentName", p.lineno(1))
@@ -1684,14 +1495,9 @@ class Parser(object):
     def p_ext_doc_refs_1(self, p):
         """ext_doc_ref : EXT_DOC_REF DOC_REF_ID DOC_URI EXT_DOC_REF_CHKSUM"""
         try:
-            if six.PY2:
-                doc_ref_id = p[2].decode(encoding="utf-8")
-                doc_uri = p[3].decode(encoding="utf-8")
-                ext_doc_chksum = p[4].decode(encoding="utf-8")
-            else:
-                doc_ref_id = p[2]
-                doc_uri = p[3]
-                ext_doc_chksum = p[4]
+            doc_ref_id = p[2]
+            doc_uri = p[3]
+            ext_doc_chksum = p[4]
 
             self.builder.add_ext_doc_refs(
                 self.document, doc_ref_id, doc_uri, ext_doc_chksum
@@ -1710,10 +1516,7 @@ class Parser(object):
     def p_spdx_version_1(self, p):
         """spdx_version : DOC_VERSION LINE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_doc_version(self.document, value)
         except CardinalityError:
             self.more_than_one_error("SPDXVersion", p.lineno(1))
@@ -1731,10 +1534,7 @@ class Parser(object):
     def p_creator_comment_1(self, p):
         """creator_comment : CREATOR_COMMENT TEXT"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_creation_comment(self.document, value)
         except CardinalityError:
             self.more_than_one_error("CreatorComment", p.lineno(1))
@@ -1758,10 +1558,7 @@ class Parser(object):
     def p_created_1(self, p):
         """created : CREATED DATE"""
         try:
-            if six.PY2:
-                value = p[2].decode(encoding="utf-8")
-            else:
-                value = p[2]
+            value = p[2]
             self.builder.set_created_date(self.document, value)
         except CardinalityError:
             self.more_than_one_error("Created", p.lineno(1))
@@ -1776,10 +1573,7 @@ class Parser(object):
         """entity : TOOL_VALUE
         """
         try:
-            if six.PY2:
-                value = p[1].decode(encoding="utf-8")
-            else:
-                value = p[1]
+            value = p[1]
             p[0] = self.builder.build_tool(self.document, value)
         except SPDXValueError:
             msg = ERROR_MESSAGES["TOOL_VALUE"].format(p[1], p.lineno(1))
@@ -1791,10 +1585,7 @@ class Parser(object):
         """entity : ORG_VALUE
         """
         try:
-            if six.PY2:
-                value = p[1].decode(encoding="utf-8")
-            else:
-                value = p[1]
+            value = p[1]
             p[0] = self.builder.build_org(self.document, value)
         except SPDXValueError:
             msg = ERROR_MESSAGES["ORG_VALUE"].format(p[1], p.lineno(1))
@@ -1806,10 +1597,7 @@ class Parser(object):
         """entity : PERSON_VALUE
         """
         try:
-            if six.PY2:
-                value = p[1].decode(encoding="utf-8")
-            else:
-                value = p[1]
+            value = p[1]
             p[0] = self.builder.build_person(self.document, value)
         except SPDXValueError:
             msg = ERROR_MESSAGES["PERSON_VALUE"].format(p[1], p.lineno(1))
