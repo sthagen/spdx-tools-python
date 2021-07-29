@@ -14,6 +14,7 @@ from spdx.document import LicenseConjunction
 from spdx.document import LicenseDisjunction
 from spdx.parsers.builderexceptions import SPDXValueError, CardinalityError, OrderError
 from spdx.parsers import rdf
+from spdx.parsers.loggers import ErrorMessages
 from spdx import utils
 from spdx.utils import UnKnown
 
@@ -460,7 +461,7 @@ class RelationshipParser(BaseParser):
             except SPDXValueError:
                 self.value_error("RELATIONSHIP_VALUE", relate)
         else:
-            self.value_error("RELATIONSHIP_VALUE", relate)
+            self.value_error("RELATIONSHIP_VALUE", relationshiptype)
 
     def parse_relationship_comment(self, relationship_comment):
         """
@@ -1485,7 +1486,7 @@ class Parser(
 
         self.parse_doc_described_objects(self.document_object.get("documentDescribes"))
 
-        validation_messages = []
+        validation_messages = ErrorMessages()
         # Report extra errors if self.error is False otherwise there will be
         # redundent messages
         validation_messages = self.document.validate(validation_messages)
