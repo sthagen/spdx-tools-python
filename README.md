@@ -1,4 +1,4 @@
-# Python SPDX Library to parse, validate and create SPDX documents
+# Python library to parse, validate and create SPDX documents
 
 | Linux | macOS | Windows |
 | :---- | :------ | :---- |
@@ -14,15 +14,17 @@
 
 # Information
 
-This library implements an SPDX tag/value and RDF parser, validator and handler in Python.
-This is the result of an initial GSoC contribution by @[ah450](https://github.com/ah450) (or https://github.com/a-h-i) and 
-is maintained by a community of SPDX adopters and enthusiasts.
+This library implements SPDX tag/value and RDF parsers, validators and handlers in Python.
 
-Home: https://github.com/spdx/tools-python
+- Home: https://github.com/spdx/tools-python
+- Issues: https://github.com/spdx/tools-python/issues
+- Pypi: https://pypi.python.org/pypi/spdx-tools
 
-Issues: https://github.com/spdx/tools-python/issues
 
-Pypi: https://pypi.python.org/pypi/spdx-tools
+# History
+
+This is the result of an initial GSoC contribution by @[ah450](https://github.com/ah450)
+(or https://github.com/a-h-i) and  is maintained by a community of SPDX adopters and enthusiasts.
 
 
 # License
@@ -38,7 +40,7 @@ Pypi: https://pypi.python.org/pypi/spdx-tools
 
 # TODOs
 
-* Update to full SPDX v2.1
+* Update to full SPDX v2.2.1(ISO 5962:2021)
 * Add to full license expression support
 
 
@@ -65,10 +67,10 @@ Try running :   `parser --file data/SPDXRdfExample.rdf`.
 * If I/O formats are not known:
 
     * Use `convertor --from/-f <input_format> <input_file> --to/-t <output_format> <output_file>` where `<input_format>` is the manually enterred format of the input file (can be either rdf or tag)
-    and `<out_format>` (can be tag, rdf, json, yaml, xml) is the manually enterred format of the output file. 
+    and `<out_format>` (can be tag, rdf, json, yaml, xml) is the manually entered format of the output file. 
     Try running : `convertor --from tag data/SPDXTagExample.in --to yaml output.out` 
 
-* If anyone format is known and other is not, you can use the mixture of the above two points.      
+* If anyone of the format is known and other is not, you can use the mixture of the above two points.      
 Ex. : `convertor -f rdf data/SPDXRdfExample.xyz -o output.xml`
 
 * for help - use `convertor --help`
@@ -85,13 +87,12 @@ instead of `bin`.
 
 # How to run tests
 
-Tests framework is using pytest and testfixtures
+Tests framework is using pytest
 
 ```
-pip install pytest testfixtures
-pytest
+pip install pytest
+pytest -vvs
 ```
-
 
 
 # Development process
@@ -133,5 +134,6 @@ If there is no issue for the changes that you want to make, create first an issu
 # Support
 
 * Submit issues, questions or feedback at: https://github.com/spdx/tools-python/issues
-* Join the dicussion on https://lists.spdx.org/mailman/listinfo/spdx-tech and 
-  https://spdx.org/WorkgroupTechnical
+* Join the chat at https://gitter.im/spdx-org/Lobby
+* Join the dicussion on https://lists.spdx.org/g/spdx-tech and 
+  https://spdx.dev/participate/tech/

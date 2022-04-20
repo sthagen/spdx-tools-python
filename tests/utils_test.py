@@ -10,10 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from collections import OrderedDict
 import io
@@ -28,12 +24,6 @@ import yaml
 
 import spdx
 from spdx import utils
-
-try:
-    from testfixtures import compare
-except ImportError:
-    def compare(a, b):
-        assert a == b, "for better comparaison results, please pip install testfixtures"
 
 
 test_data_dir = os.path.join(os.path.dirname(__file__), 'data')
@@ -279,7 +269,8 @@ class TestParserUtils(object):
         """
         CONJ_SEP = re.compile(' AND | and ')
         DISJ_SEP = re.compile(' OR | or ')
-
+        if license is None:
+            return None
         license_dict = OrderedDict()
 
         if isinstance(license, spdx.document.LicenseConjunction):
@@ -314,6 +305,8 @@ class TestParserUtils(object):
         """
         Represents spdx.creationInfo.Creator subclasses as a dictionary
         """
+        if entity is None:
+            return None
         entity_dict = OrderedDict(name=entity.name)
 
         if isinstance(entity, spdx.creationinfo.Tool):
@@ -334,6 +327,8 @@ class TestParserUtils(object):
         """
         Represents spdx.checksum.Algorithm as a Python dictionary
         """
+        if checksum is None:
+            return None
         return OrderedDict([
             ('identifier', checksum.identifier),
             ('value', checksum.value)])
@@ -343,7 +338,9 @@ class TestParserUtils(object):
         """
         Represents spdx.package.Package as a Python dictionary
         """
-        lics_from_files = sorted(package.licenses_from_files, key=lambda lic: lic.identifier)
+        lics_from_files = []
+        if package.are_files_analyzed:
+            lics_from_files = sorted(package.licenses_from_files, key=lambda lic: lic.identifier)
         return OrderedDict([
             ('id', package.spdx_id),
             ('name', package.name),
@@ -513,7 +510,7 @@ class TestParserUtils(object):
             ('creators', [cls.entity_to_dict(creator) for creator in creators]),
             ('created', utils.datetime_iso_format(doc.creation_info.created)),
             ('creatorComment', doc.creation_info.comment),
-            ('package', cls.package_to_dict(doc.package)),
+            ('packages', [cls.package_to_dict(p) for p in doc.packages]),
             ('externalDocumentRefs', cls.ext_document_references_to_list(sorted(doc.ext_document_references))),
             ('extractedLicenses', cls.extracted_licenses_to_list(sorted(doc.extracted_licenses))),
             ('annotations', cls.annotations_to_list(sorted(doc.annotations))),

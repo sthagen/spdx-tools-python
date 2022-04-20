@@ -36,7 +36,7 @@ class TestParser(TestCase):
         with io.open(expected_loc, encoding='utf-8') as ex:
             expected = json.load(ex, object_pairs_hook=OrderedDict)
 
-        utils_test.compare(expected, result)
+        assert result == expected
 
     def test_json_parser(self):
         parser = jsonparser.Parser(Builder(), StandardLogger())
@@ -60,4 +60,13 @@ class TestParser(TestCase):
         with io.open(test_file, encoding='utf-8') as f:
             document, _ = parser.parse(f)
         expected_loc = utils_test.get_test_loc('doc_parse/expected.json')
+        self.check_document(document, expected_loc)
+
+    def test_sbomyaml_parser(self):
+        parser = yamlparser.Parser(Builder(), StandardLogger())
+        test_file = utils_test.get_test_loc('formats/SPDXSBOMExample.spdx.yml')
+        with io.open(test_file, encoding='utf-8') as f:
+            document, errors = parser.parse(f)
+            assert not errors
+        expected_loc = utils_test.get_test_loc('doc_parse/SBOMexpected.json')
         self.check_document(document, expected_loc)
