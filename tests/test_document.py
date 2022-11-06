@@ -22,6 +22,7 @@ from spdx.document import License
 from spdx.file import File
 from spdx.package import Package
 from spdx.parsers.loggers import ErrorMessages
+from spdx.relationship import Relationship
 from spdx.utils import NoAssert
 from spdx.version import Version
 
@@ -77,11 +78,11 @@ class TestDocument(TestCase):
                        'Sample_Document-V2.1', spdx_id='SPDXRef-DOCUMENT',
                        namespace='https://spdx.org/spdxdocs/spdx-example-444504E0-4F89-41D3-9A0C-0305E82C3301')
         pack = doc.package = Package('some/path', NoAssert())
-        pack.check_sum = 'SOME-SHA1'
+        pack.checksum = 'SOME-SHA1'
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
-        file1.chk_sum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
         lic1 = License.from_identifier('LGPL-2.1-only')
         file1.add_lics(lic1)
         pack.add_lics_from_file(lic1)
@@ -119,7 +120,7 @@ class TestDocument(TestCase):
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
-        file1.chk_sum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
 
@@ -172,14 +173,14 @@ class TestWriters(TestCase):
         package.spdx_id = 'SPDXRef-Package'
         package.cr_text = 'Some copyrught'
         package.verif_code = 'SOME code'
-        package.check_sum = Algorithm('SHA1', 'SOME-SHA1')
+        package.checksum = Algorithm('SHA1', 'SOME-SHA1')
         package.license_declared = NoAssert()
         package.conc_lics = NoAssert()
 
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
-        file1.chk_sum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
 
@@ -191,6 +192,8 @@ class TestWriters(TestCase):
 
         package.add_lics_from_file(lic1)
         package.add_file(file1)
+        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package.spdx_id
+        doc.add_relationships(Relationship(relationship))
         return doc
 
     def _get_lgpl_multi_package_doc(self, or_later=False):
@@ -228,7 +231,7 @@ class TestWriters(TestCase):
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
-        file1.chk_sum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
 
@@ -245,6 +248,13 @@ class TestWriters(TestCase):
 
         doc.add_package(package2)
         doc.add_package(package3)
+
+        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package1.spdx_id
+        doc.add_relationships(Relationship(relationship))
+        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package2.spdx_id
+        doc.add_relationships(Relationship(relationship))
+        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package3.spdx_id
+        doc.add_relationships(Relationship(relationship))
 
         return doc
 

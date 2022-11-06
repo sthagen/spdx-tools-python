@@ -452,7 +452,7 @@ class RelationshipParser(BaseParser):
     def parse_relationship(self, spdxelementid, relationshiptype, relatedspdxelement):
         """
         Parse Relationshiptype, spdxElementId and relatedSpdxElement
-        - relationship : Python str/unicode
+        - relationship: Python str/unicode
         """
         if isinstance(relationshiptype, str):
             relate = spdxelementid + " " + relationshiptype + " " + relatedspdxelement
@@ -555,7 +555,7 @@ class SnippetParser(BaseParser):
     def parse_snippet_attribution_text(self, snippet_attribution_texts):
         """
         Parse Snippet attribution texts
-        - snippet_attribution_texts : list in yaml, json and string in xml format
+        - snippet_attribution_texts: list in yaml, json and string in xml format
         """
         if isinstance(snippet_attribution_texts, list) or isinstance(
             snippet_attribution_texts, str
@@ -737,11 +737,11 @@ class FileParser(BaseParser):
         - file: Python dict with File Information fields in it
         """
         if isinstance(file, dict):
-            self.parse_file_name(file.get("name"))
+            self.parse_file_name(file.get("fileName"))
             self.parse_file_id(file.get("SPDXID"))
             self.parse_file_types(file.get("fileTypes"))
             self.parse_file_concluded_license(file.get("licenseConcluded"))
-            self.parse_file_license_info_from_files(file.get("licenseInfoFromFiles"))
+            self.parse_file_license_info_in_files(file.get("licenseInfoInFiles"))
             self.parse_file_license_comments(file.get("licenseComments"))
             self.parse_file_copyright_text(file.get("copyrightText"))
             self.parse_file_artifacts(file.get("artifactOf"))
@@ -836,7 +836,7 @@ class FileParser(BaseParser):
         else:
             self.value_error("FILE_SINGLE_LICS", concluded_license)
 
-    def parse_file_license_info_from_files(self, license_info_from_files):
+    def parse_file_license_info_in_files(self, license_info_from_files):
         """
         Parse File license information from files
         - license_info_from_files: Python list of licenses information from files (str/unicode)
@@ -882,7 +882,7 @@ class FileParser(BaseParser):
     def parse_file_attribution_text(self, file_attribution_texts):
         """
         Parse File attribution texts
-        - file_attribution_texts : list in yaml, json and string in xml format
+        - file_attribution_texts: list in yaml, json and string in xml format
         """
         if isinstance(file_attribution_texts, list) or isinstance(
             file_attribution_texts, str
@@ -1357,7 +1357,7 @@ class PackageParser(BaseParser):
     def parse_pkg_attribution_text(self, pkg_attribution_texts):
         """
         Parse Package attribution texts
-        - pkg_attribution_texts : list in yaml, json and string in xml format
+        - pkg_attribution_texts: list in yaml, json and string in xml format
         """
         if isinstance(pkg_attribution_texts, list) or isinstance(
             pkg_attribution_texts, str
@@ -1495,6 +1495,32 @@ class PackageParser(BaseParser):
             self.value_error("PKG_CHECKSUM", pkg_chksum)
 
 
+def flatten_document(document):
+    """
+    Flatten document to match current data model. File objects are nested within packages according to hasFiles-tag.
+    """
+    files_by_id = {}
+    if "files" in document:
+        for f in document.get("files"):
+            for checksum in f["checksums"]:
+                if checksum["algorithm"] == "SHA1" or "sha1" in checksum["algorithm"]:
+                    f["sha1"] = checksum["checksumValue"]
+                    break
+            files_by_id[f["SPDXID"]] = f
+    if "packages" in document:
+        packages = document.get("packages")
+        for package in packages:
+            if "hasFiles" in package:
+                package["files"] = [{
+                    "File": files_by_id[spdxid.split("#")[-1]]} for spdxid in package["hasFiles"]
+                ]
+            for checksum in package.get("checksums", []):
+                if checksum["algorithm"] == "SHA1" or "sha1" in checksum["algorithm"]:
+                    package["sha1"] = checksum["checksumValue"]
+                    break
+
+    return document
+
 class Parser(
     CreationInfoParser,
     ExternalDocumentRefsParser,
@@ -1522,6 +1548,7 @@ class Parser(
         """
         self.error = False
         self.document = document.Document()
+        self.document_object = flatten_document(self.document_object)
         if not isinstance(self.document_object, dict):
             self.logger.log("Empty or not valid SPDX Document")
             self.error = True
@@ -1547,11 +1574,12 @@ class Parser(
 
         self.parse_packages(self.document_object.get("packages"))
 
-        self.parse_doc_described_objects(self.document_object.get("documentDescribes"))
+        if self.document_object.get("documentDescribes"):
+            self.parse_doc_described_objects(self.document_object.get("documentDescribes"))
 
         validation_messages = ErrorMessages()
         # Report extra errors if self.error is False otherwise there will be
-        # redundent messages
+        # redundant messages
         validation_messages = self.document.validate(validation_messages)
         if not self.error:
             if validation_messages:
@@ -1646,25 +1674,16 @@ class Parser(
 
     def parse_doc_described_objects(self, doc_described_objects):
         """
-        Parse Document documentDescribes (Files and Packages dicts)
-        - doc_described_objects: Python list of dicts as in FileParser.parse_file or PackageParser.parse_package
+        Parse Document documentDescribes (SPDXIDs)
+        - doc_described_objects: Python list of strings
         """
         if isinstance(doc_described_objects, list):
-            packages = filter(
-                lambda described: isinstance(described, dict)
-                and described.get("Package") is not None,
-                doc_described_objects,
+            described_spdxids = filter(
+                lambda described: isinstance(described, str), doc_described_objects
             )
-            files = filter(
-                lambda described: isinstance(described, dict)
-                and described.get("File") is not None,
-                doc_described_objects,
-            )
-            # At the moment, only single-package documents are supported, so just the last package will be stored.
-            for package in packages:
-                self.parse_package(package.get("Package"))
-            for file in files:
-                self.parse_file(file.get("File"))
+            for spdxid in described_spdxids:
+                self.parse_relationship(self.document.spdx_id, "DESCRIBES", spdxid)
+
             return True
         else:
             self.value_error("DOC_DESCRIBES", doc_described_objects)

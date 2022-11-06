@@ -178,8 +178,8 @@ def load_and_clean_json(location):
         content = l.read()
     data = json.loads(content)
 
-    if 'creationInfo' in data['Document']:
-        del(data['Document']['creationInfo'])
+    if 'creationInfo' in data:
+        del(data['creationInfo'])
 
     return sort_nested(data)
 
@@ -208,8 +208,8 @@ def load_and_clean_yaml(location):
         content = l.read()
     data = yaml.safe_load(content)
 
-    if 'creationInfo' in data['Document']:
-        del(data['Document']['creationInfo'])
+    if 'creationInfo' in data:
+        del(data['creationInfo'])
 
     return sort_nested(data)
 
@@ -238,8 +238,8 @@ def load_and_clean_xml(location):
         content = l.read()
     data = xmltodict.parse(content, encoding='utf-8')
 
-    if 'creationInfo' in data['SpdxDocument']['Document']:
-        del(data['SpdxDocument']['Document']['creationInfo'])
+    if 'creationInfo' in data['Document']:
+        del(data['Document']['creationInfo'])
 
     return sort_nested(data)
 
@@ -360,7 +360,7 @@ class TestParserUtils(object):
             ('licenseDeclared', cls.license_to_dict(package.license_declared)),
             ('copyrightText', package.cr_text),
             ('licenseComment', package.license_comment),
-            ('checksum', cls.checksum_to_dict(package.check_sum)),
+            ('checksum', cls.checksum_to_dict(package.checksum)),
             ('files', cls.files_to_list(sorted(package.files))),
             ('licenseInfoFromFiles', [cls.license_to_dict(lic) for lic in lics_from_files]),
             ('verificationCode', OrderedDict([
@@ -377,19 +377,19 @@ class TestParserUtils(object):
         files_list = []
 
         for file in files:
-            lics_from_files = sorted(file.licenses_in_file, key=lambda lic: lic.identifier)
+            lics_in_files = sorted(file.licenses_in_file, key=lambda lic: lic.identifier)
             contributors = sorted(file.contributors, key=lambda c: c.name)
             file_dict = OrderedDict([
                 ('id', file.spdx_id),
-                ('name', file.name),
+                ('fileName', file.name),
                 ('type', file.type),
                 ('comment', file.comment),
                 ('licenseConcluded', cls.license_to_dict(file.conc_lics)),
                 ('copyrightText', file.copyright),
                 ('licenseComment', file.license_comment),
                 ('notice', file.notice),
-                ('checksum', cls.checksum_to_dict(file.chk_sum)),
-                ('licenseInfoFromFiles', [cls.license_to_dict(lic) for lic in lics_from_files]),
+                ('checksum', cls.checksum_to_dict(file.chksum)),
+                ('licenseInfoInFiles', [cls.license_to_dict(lic) for lic in lics_in_files]),
                 ('contributors', [cls.entity_to_dict(contributor) for contributor in contributors]),
                 ('dependencies', sorted(file.dependencies)),
                 ('artifactOfProjectName', file.artifact_of_project_name),

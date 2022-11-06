@@ -24,7 +24,7 @@ class Package(object):
     """
     Represent an analyzed Package.
     Fields:
-     - name : Mandatory, string.
+     - name: Mandatory, string.
      - spdx_id: Uniquely identify any element in an SPDX document which may be
      referenced by other elements. Mandatory, one. Type: str.
      - version: Optional, string.
@@ -47,9 +47,9 @@ class Package(object):
      - source_info: Optional string.
      - conc_lics: Mandatory spdx.document.License or spdx.utils.SPDXNone or
      - spdx.utils.NoAssert.
-     - license_declared : Mandatory spdx.document.License or spdx.utils.SPDXNone or
-     - spdx.utils.NoAssert.
-     - license_comment  : optional string.
+     - license_declared: Mandatory spdx.document.License or spdx.utils.SPDXNone or
+     spdx.utils.NoAssert.
+     - license_comment: optional string.
      - licenses_from_files: list of spdx.document.License or spdx.utils.SPDXNone or
      - spdx.utils.NoAssert.
      - cr_text: Copyright text, string , utils.NoAssert or utils.SPDXNone. Mandatory.
@@ -57,11 +57,11 @@ class Package(object):
      - description: Optional str.
      - comment: Comments about the package being described, optional one.
      Type: str
-     - files: List of files in package, atleast one.
-     - verif_exc_files : list of file names excluded from verification code or None.
-     - ext_pkg_refs : External references referenced within the given package.
+     - files: List of files in package, at least one.
+     - verif_exc_files: list of file names excluded from verification code or None.
+     - ext_pkg_refs: External references referenced within the given package.
      Optional, one or many. Type: ExternalPackageRef
-     - attribution_text : optional string.
+     - attribution_text: optional string.
     """
 
     def __init__(
@@ -84,7 +84,7 @@ class Package(object):
         self.files_analyzed = None
         self.homepage = None
         self.verif_code = None
-        self.check_sum = None
+        self.checksums = [None]
         self.source_info = None
         self.conc_lics = None
         self.license_declared = None
@@ -104,6 +104,18 @@ class Package(object):
         return self.files_analyzed is not False
         # as default None Value is False, previous line is simplification of
         # return self.files_analyzed or self.files_analyzed is None
+
+    @property
+    def checksum(self):
+        """
+        Backwards compatibility, return first checksum.
+        """
+        # NOTE Package.check_sum but File.chk_sum
+        return self.checksums[0]
+
+    @checksum.setter
+    def checksum(self, value):
+        self.checksums[0] = value
 
     def add_file(self, fil):
         self.files.append(fil)
@@ -271,10 +283,14 @@ class Package(object):
         return messages
 
     def validate_checksum(self, messages):
-        if self.check_sum is not None:
-            if not isinstance(self.check_sum, checksum.Algorithm):
+        if self.checksum is not None:
+            if not isinstance(self.checksum, checksum.Algorithm):
                 messages.append(
                     "Package checksum must be instance of spdx.checksum.Algorithm"
+                )
+            elif not self.checksum.identifier == "SHA1":
+                messages.append(
+                    "First checksum in package must be SHA1."
                 )
 
         return messages
@@ -284,10 +300,10 @@ class Package(object):
 
         for file_entry in self.files:
             if (
-                isinstance(file_entry.chk_sum, checksum.Algorithm)
-                and file_entry.chk_sum.identifier == "SHA1"
+                isinstance(file_entry.chksum, checksum.Algorithm)
+                and file_entry.chksum.identifier == "SHA1"
             ):
-                sha1 = file_entry.chk_sum.value
+                sha1 = file_entry.chksum.value
             else:
                 sha1 = file_entry.calc_chksum()
             hashes.append(sha1)

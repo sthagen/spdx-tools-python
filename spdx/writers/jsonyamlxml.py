@@ -47,7 +47,7 @@ class BaseWriter(object):
         """
         checksum_object = dict()
         checksum_object["algorithm"] = (
-            "checksumAlgorithm_" + checksum_field.identifier.lower()
+            checksum_field.identifier.upper()
         )
         checksum_object["checksumValue"] = checksum_field.value
         return checksum_object
@@ -142,14 +142,13 @@ class PackageWriter(BaseWriter):
             package_object["packageFileName"] = package.file_name
 
         if package.has_optional_field("supplier"):
-            package_object["supplier"] = package.supplier.__str__()
+            package_object["supplier"] = package.supplier.to_value()
 
         if package.has_optional_field("originator"):
-            package_object["originator"] = package.originator.__str__()
+            package_object["originator"] = package.originator.to_value()
 
-        if package.has_optional_field("check_sum"):
-            package_object["checksums"] = [self.checksum(package.check_sum)]
-            package_object["sha1"] = package.check_sum.value
+        if package.has_optional_field("checksum"):
+            package_object["checksums"] = [self.checksum(checksum) for checksum in package.checksums if checksum]
 
         if package.has_optional_field("description"):
             package_object["description"] = package.description
@@ -160,7 +159,14 @@ class PackageWriter(BaseWriter):
         if package.has_optional_field("homepage"):
             package_object["homepage"] = package.homepage.__str__()
 
-        return package_object
+        files_in_package = []
+        if package.has_optional_field("files"):
+            package_object["hasFiles"] = []
+            for file in package.files:
+                package_object["hasFiles"].append(file.spdx_id)
+                files_in_package.append(self.create_file_info(file))
+
+        return package_object, files_in_package
 
 
 class FileWriter(BaseWriter):
@@ -186,64 +192,58 @@ class FileWriter(BaseWriter):
 
         return artifact_of_objects
 
-    def create_file_info(self, package):
+    def create_file_info(self, file):
         file_types = {
             1: "fileType_source",
             2: "fileType_binary",
             3: "fileType_archive",
             4: "fileType_other",
         }
-        file_objects = []
-        files = package.files
 
-        for file in files:
-            file_object = dict()
+        file_object = dict()
 
-            file_object["name"] = file.name
-            file_object["SPDXID"] = self.spdx_id(file.spdx_id)
-            file_object["checksums"] = [self.checksum(file.chk_sum)]
-            file_object["licenseConcluded"] = self.license(file.conc_lics)
-            file_object["licenseInfoFromFiles"] = list(
-                map(self.license, file.licenses_in_file)
-            )
-            file_object["copyrightText"] = file.copyright.__str__()
-            file_object["sha1"] = file.chk_sum.value
+        file_object["fileName"] = file.name
+        file_object["SPDXID"] = self.spdx_id(file.spdx_id)
+        file_object["checksums"] = [self.checksum(file.chksum)]
+        file_object["licenseConcluded"] = self.license(file.conc_lics)
+        file_object["licenseInfoInFiles"] = list(
+            map(self.license, file.licenses_in_file)
+        )
+        file_object["copyrightText"] = file.copyright.__str__()
 
-            if file.has_optional_field("comment"):
-                file_object["comment"] = file.comment
+        if file.has_optional_field("comment"):
+            file_object["comment"] = file.comment
 
-            if file.has_optional_field("type"):
-                file_object["fileTypes"] = [file_types.get(file.type)]
+        if file.has_optional_field("type"):
+            file_object["fileTypes"] = [file_types.get(file.type)]
 
-            if file.has_optional_field("license_comment"):
-                file_object["licenseComments"] = file.license_comment
+        if file.has_optional_field("license_comment"):
+            file_object["licenseComments"] = file.license_comment
 
-            if file.has_optional_field("attribution_text"):
-                file_object["attributionTexts"] = [file.attribution_text]
+        if file.has_optional_field("attribution_text"):
+            file_object["attributionTexts"] = [file.attribution_text]
 
-            if file.has_optional_field("notice"):
-                file_object["noticeText"] = file.notice
+        if file.has_optional_field("notice"):
+            file_object["noticeText"] = file.notice
 
-            if file.contributors:
-                file_object["fileContributors"] = file.contributors.__str__()
+        if file.contributors:
+            file_object["fileContributors"] = file.contributors.__str__()
 
-            if file.dependencies:
-                file_object["fileDependencies"] = file.dependencies
+        if file.dependencies:
+            file_object["fileDependencies"] = file.dependencies
 
-            valid_artifacts = (
+        valid_artifacts = (
                 file.artifact_of_project_name
                 and len(file.artifact_of_project_name)
                 == len(file.artifact_of_project_home)
                 and len(file.artifact_of_project_home)
                 == len(file.artifact_of_project_uri)
-            )
+        )
 
-            if valid_artifacts:
-                file_object["artifactOf"] = self.create_artifact_info(file)
+        if valid_artifacts:
+            file_object["artifactOf"] = self.create_artifact_info(file)
 
-            file_objects.append({"File": file_object})
-
-        return file_objects
+        return file_object
 
 
 class ReviewInfoWriter(BaseWriter):
@@ -312,6 +312,10 @@ class RelationshipInfoWriter(BaseWriter):
         relationship_objects = []
 
         for relationship_term in self.document.relationships:
+            if relationship_term.relationshiptype == "DESCRIBES":
+                continue
+            if relationship_term.relationshiptype == "CONTAINS":
+                continue
             relationship_object = dict()
             relationship_object["spdxElementId"] = relationship_term.spdxelementid
             relationship_object[
@@ -465,6 +469,22 @@ class Writer(
 
         return ext_document_reference_objects
 
+    def create_document_describes(self):
+        """
+        Create a list of SPDXIDs that the document describes according to DESCRIBES-relationship.
+        """
+        document_describes = []
+        remove_rel = []
+        for relationship in self.document.relationships:
+            if relationship.relationshiptype == "DESCRIBES":
+                document_describes.append(relationship.relatedspdxelement)
+                if not relationship.has_comment:
+                    remove_rel.append(relationship)
+        for relationship in remove_rel:
+            self.document.relationships.remove(relationship)
+        return document_describes
+
+
     def create_document(self):
         self.document_object = dict()
 
@@ -475,15 +495,17 @@ class Writer(
         self.document_object["SPDXID"] = self.spdx_id(self.document.spdx_id)
         self.document_object["name"] = self.document.name
 
-        package_objects = []
-        for package in self.document.packages:
-            package_info_object = self.create_package_info(package)
-            # SPDX 2.2 says to omit if filesAnalyzed = False
-            if package.files:
-                package_info_object["files"] = self.create_file_info(package)
-            package_objects.append({"Package": package_info_object})
+        document_describes = self.create_document_describes()
+        self.document_object["documentDescribes"] = document_describes
 
-        self.document_object["documentDescribes"] = package_objects
+        package_objects = []
+        file_objects = []
+        for package in self.document.packages:
+            package_info_object, files_in_package = self.create_package_info(package)
+            package_objects.append(package_info_object)
+            file_objects.extend(file for file in files_in_package if file not in file_objects)
+        self.document_object["packages"] = package_objects
+        self.document_object["files"] = file_objects
 
         if self.document.has_comment:
             self.document_object["comment"] = self.document.comment
@@ -510,4 +532,5 @@ class Writer(
         if self.document.relationships:
             self.document_object["relationships"] = self.create_relationship_info()
 
-        return {"Document": self.document_object}
+        return self.document_object
+

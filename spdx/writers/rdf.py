@@ -22,6 +22,7 @@ from spdx import file
 from spdx import document
 from spdx import config
 from spdx import utils
+from spdx.package import Package
 from spdx.parsers.loggers import ErrorMessages
 from spdx.writers.tagvalue import InvalidDocumentError
 
@@ -263,7 +264,7 @@ class FileWriter(LicenseWriter):
             (
                 file_node,
                 self.spdx_namespace.checksum,
-                self.create_checksum_node(doc_file.chk_sum),
+                self.create_checksum_node(doc_file.chksum),
             )
         )
 
@@ -709,7 +710,7 @@ class PackageWriter(LicenseWriter):
             triple = (package_node, predicate, value_node)
             self.graph.add(triple)
 
-    def handle_pkg_optional_fields(self, package, package_node):
+    def handle_pkg_optional_fields(self, package: Package, package_node):
         """
         Write package optional fields.
         """
@@ -753,8 +754,8 @@ class PackageWriter(LicenseWriter):
             package, package_node, self.spdx_namespace.filesAnalyzed, "files_analyzed"
         )
 
-        if package.has_optional_field("check_sum"):
-            checksum_node = self.create_checksum_node(package.check_sum)
+        if package.has_optional_field("checksum"):
+            checksum_node = self.create_checksum_node(package.checksum)
             self.graph.add((package_node, self.spdx_namespace.checksum, checksum_node))
 
         if package.has_optional_field("homepage"):
@@ -953,7 +954,7 @@ class Writer(
     SnippetWriter,
 ):
     """
-    Warpper for other writers to write all fields of spdx.document.Document
+    Wrapper for other writers to write all fields of spdx.document.Document
     Call `write()` to start writing.
     """
 
@@ -982,8 +983,9 @@ class Writer(
             self.graph.add((doc_node, self.spdx_namespace.name, doc_name))
         return doc_node
 
-    def write(self):
-        doc_node = self.create_doc()
+    def write(self, doc_node=None):
+        if not doc_node:
+            doc_node = self.create_doc()
         # Add creation info
         creation_info_node = self.create_creation_info()
         ci_triple = (doc_node, self.spdx_namespace.creationInfo, creation_info_node)

@@ -37,12 +37,16 @@ class Parser(jsonyamlxml.Parser):
             "reviewers",
             "fileTypes",
             "licenseInfoFromFiles",
+            "licenseInfoInFiles",
             "artifactOf",
             "fileContributors",
             "fileDependencies",
             "excludedFilesNames",
             "files",
             "documentDescribes",
+            "packages",
+            "checksums",
+            "hasFiles"
         }
 
     def parse(self, file):
@@ -50,7 +54,7 @@ class Parser(jsonyamlxml.Parser):
             file.read(), strip_whitespace=False, encoding="utf-8"
         )
         fixed_object = self._set_in_list(parsed_xml, self.LIST_LIKE_FIELDS)
-        self.document_object = fixed_object.get("SpdxDocument").get("Document")
+        self.document_object = fixed_object.get("Document")
         return super(Parser, self).parse()
 
     def _set_in_list(self, data, keys):
