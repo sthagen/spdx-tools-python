@@ -18,7 +18,7 @@
           "ns1:licenseDeclared": {
             "@rdf:resource": "http://spdx.org/rdf/terms#noassertion"
           }, 
-          "ns1:name": "some/path", 
+          "ns1:name": "some/path",
           "ns1:licenseInfoFromFiles": {
             "@rdf:resource": "http://spdx.org/licenses/LGPL-2.1-only"
           }, 
@@ -61,7 +61,16 @@
           }, 
           "ns1:fileName": "./some/path/tofile"
         }
-      }, 
+      },
+        "ns1:relationship": {
+            "ns1:Relationship": {
+                "ns1:spdxElementId": "SPDXRef-DOCUMENT",
+                "ns1:relatedSpdxElement": "SPDXRef-Package",
+                "ns1:relationshipType": {
+                    "@rdf:resource": "http://spdx.org/rdf/terms#relationshipType_describes"
+                }
+            }
+        },
       "@rdf:about": "http://www.spdx.org/tools#SPDXRef-DOCUMENT"
     }
   }

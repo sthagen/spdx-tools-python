@@ -25,7 +25,7 @@ def main(file, force):
     """
     COMMAND-LINE TOOL for parsing file of RDF, XML, JSON, YAML and XML format.
 
-    To use : run `parser` using terminal or run `parser --file <file name>`
+    To use : run `pyspdxtools_parser` using terminal or run `pyspdxtools_parser --file <file name>`
 
     """
     doc, errors = parse_file(file)
@@ -89,6 +89,15 @@ def main(file, force):
                 ",".join(f.artifact_of_project_name)
             )
         )
+
+    if len(doc.package.pkg_ext_refs) > 0:
+        print("Package external references:")
+        for ref in doc.package.pkg_ext_refs:
+            print(f"\tCategory: {ref.category}")
+            print(f"\tType: {ref.pkg_ext_ref_type}")
+            print(f"\tLocator: {ref.locator}")
+            if ref.comment:
+                print(f"\tComment: {ref.comment}")
 
     print("Document Extracted licenses:")
     for lics in doc.extracted_licenses:

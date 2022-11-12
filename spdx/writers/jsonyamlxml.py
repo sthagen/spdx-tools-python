@@ -11,7 +11,8 @@
 
 from rdflib import Literal
 
-from spdx import document
+from spdx import document, utils
+from spdx.package import ExternalPackageRef
 
 
 class BaseWriter(object):
@@ -107,6 +108,20 @@ class PackageWriter(BaseWriter):
 
         return package_verification_code_object
 
+    @staticmethod
+    def external_reference_as_dict(external_ref: ExternalPackageRef) -> dict:
+        """
+        Create a dictionary representation of the provided external reference, renaming the properties as they should
+        appear in a json/yaml/xml document.
+        """
+        external_ref_dict = dict()
+        external_ref_dict["referenceCategory"] = external_ref.category
+        external_ref_dict["referenceType"] = external_ref.pkg_ext_ref_type
+        external_ref_dict["referenceLocator"] = external_ref.locator
+        if external_ref.comment:
+            external_ref_dict["comment"] = external_ref.comment
+        return external_ref_dict
+
     def create_package_info(self, package):
         package_object = dict()
         package_object["SPDXID"] = self.spdx_id(package.spdx_id)
@@ -119,12 +134,18 @@ class PackageWriter(BaseWriter):
                 package_object["packageVerificationCode"] = self.package_verification_code(
                     package
                 )
-            package_object["licenseInfoFromFiles"] = list(
-                map(self.license, package.licenses_from_files)
-            )
-        package_object["licenseConcluded"] = self.license(package.conc_lics)
-        package_object["licenseDeclared"] = self.license(package.license_declared)
-        package_object["copyrightText"] = package.cr_text.__str__()
+            if package.has_optional_field("licenses_from_files"):
+                package_object["licenseInfoFromFiles"] = list(
+                    map(self.license, package.licenses_from_files)
+                )
+        if package.has_optional_field("conc_lics"):
+            package_object["licenseConcluded"] = self.license(package.conc_lics)
+
+        if package.has_optional_field("license_declared"):
+            package_object["licenseDeclared"] = self.license(package.license_declared)
+
+        if package.has_optional_field("cr_text"):
+            package_object["copyrightText"] = package.cr_text.__str__()
 
         if package.has_optional_field("version"):
             package_object["versionInfo"] = package.version
@@ -153,11 +174,30 @@ class PackageWriter(BaseWriter):
         if package.has_optional_field("description"):
             package_object["description"] = package.description
 
+        if package.has_optional_field("comment"):
+            package_object["comment"] = package.comment
+
         if package.has_optional_field("license_comment"):
             package_object["licenseComments"] = package.license_comment
 
         if package.has_optional_field("homepage"):
             package_object["homepage"] = package.homepage.__str__()
+
+        if package.has_optional_field("primary_package_purpose"):
+            package_object["primaryPackagePurpose"] = package.primary_package_purpose.name
+
+        if package.has_optional_field("release_date"):
+            package_object["releaseDate"] = utils.datetime_iso_format(package.release_date)
+
+        if package.has_optional_field("built_date"):
+            package_object["builtDate"] = utils.datetime_iso_format(package.built_date)
+
+        if package.has_optional_field("valid_until_date"):
+            package_object["validUntilDate"] = utils.datetime_iso_format(package.valid_until_date)
+
+        if package.has_optional_field("pkg_ext_refs"):
+            package_object["externalRefs"] = [self.external_reference_as_dict(external_ref) for external_ref in
+                                              package.pkg_ext_refs]
 
         files_in_package = []
         if package.has_optional_field("files"):
@@ -205,11 +245,17 @@ class FileWriter(BaseWriter):
         file_object["fileName"] = file.name
         file_object["SPDXID"] = self.spdx_id(file.spdx_id)
         file_object["checksums"] = [self.checksum(file.chksum)]
-        file_object["licenseConcluded"] = self.license(file.conc_lics)
-        file_object["licenseInfoInFiles"] = list(
-            map(self.license, file.licenses_in_file)
-        )
-        file_object["copyrightText"] = file.copyright.__str__()
+
+        if file.has_optional_field("conc_lics"):
+            file_object["licenseConcluded"] = self.license(file.conc_lics)
+
+        if file.has_optional_field("licenses_in_file"):
+            file_object["licenseInfoInFiles"] = list(
+                map(self.license, file.licenses_in_file)
+            )
+
+        if file.has_optional_field("copyright"):
+            file_object["copyrightText"] = file.copyright.__str__()
 
         if file.has_optional_field("comment"):
             file_object["comment"] = file.comment
@@ -227,17 +273,17 @@ class FileWriter(BaseWriter):
             file_object["noticeText"] = file.notice
 
         if file.contributors:
-            file_object["fileContributors"] = file.contributors.__str__()
+            file_object["fileContributors"] = file.contributors
 
         if file.dependencies:
             file_object["fileDependencies"] = file.dependencies
 
         valid_artifacts = (
-                file.artifact_of_project_name
-                and len(file.artifact_of_project_name)
-                == len(file.artifact_of_project_home)
-                and len(file.artifact_of_project_home)
-                == len(file.artifact_of_project_uri)
+            file.artifact_of_project_name
+            and len(file.artifact_of_project_name)
+            == len(file.artifact_of_project_home)
+            and len(file.artifact_of_project_home)
+            == len(file.artifact_of_project_uri)
         )
 
         if valid_artifacts:
@@ -312,16 +358,16 @@ class RelationshipInfoWriter(BaseWriter):
         relationship_objects = []
 
         for relationship_term in self.document.relationships:
-            if relationship_term.relationshiptype == "DESCRIBES":
+            if relationship_term.relationship_type == "DESCRIBES":
                 continue
-            if relationship_term.relationshiptype == "CONTAINS":
+            if relationship_term.relationship_type == "CONTAINS":
                 continue
             relationship_object = dict()
-            relationship_object["spdxElementId"] = relationship_term.spdxelementid
+            relationship_object["spdxElementId"] = relationship_term.spdx_element_id
             relationship_object[
                 "relatedSpdxElement"
-            ] = relationship_term.relatedspdxelement
-            relationship_object["relationshipType"] = relationship_term.relationshiptype
+            ] = relationship_term.related_spdx_element
+            relationship_object["relationshipType"] = relationship_term.relationship_type
             if relationship_term.has_comment:
                 relationship_object["comment"] = relationship_term.relationship_comment
 
@@ -345,12 +391,18 @@ class SnippetWriter(BaseWriter):
         for snippet in snippets:
             snippet_object = dict()
             snippet_object["SPDXID"] = self.spdx_id(snippet.spdx_id)
-            snippet_object["copyrightText"] = snippet.copyright
             snippet_object["fileId"] = self.spdx_id(snippet.snip_from_file_spdxid)
-            snippet_object["licenseConcluded"] = self.license(snippet.conc_lics)
-            snippet_object["licenseInfoFromSnippet"] = list(
-                map(self.license, snippet.licenses_in_snippet)
-            )
+
+            if snippet.has_optional_field("copyright"):
+                snippet_object["copyrightText"] = snippet.copyright
+
+            if snippet.has_optional_field("conc_lics"):
+                snippet_object["licenseConcluded"] = self.license(snippet.conc_lics)
+
+            if snippet.has_optional_field("licenses_in_snippet"):
+                snippet_object["licenseInfoFromSnippet"] = list(
+                    map(self.license, snippet.licenses_in_snippet)
+                )
 
             if snippet.has_optional_field("name"):
                 snippet_object["name"] = snippet.name
@@ -379,9 +431,12 @@ class ExtractedLicenseWriter(BaseWriter):
 
     def create_extracted_license(self):
         extracted_license_objects = []
-        extracted_licenses = self.document.extracted_licenses
+        unique_extracted_licenses = {}
+        for lic in self.document.extracted_licenses:
+            if lic.identifier not in unique_extracted_licenses.keys():
+                unique_extracted_licenses[lic.identifier] = lic
 
-        for extracted_license in extracted_licenses:
+        for extracted_license in unique_extracted_licenses.values():
             extracted_license_object = dict()
 
             if isinstance(extracted_license.identifier, Literal):
@@ -476,14 +531,13 @@ class Writer(
         document_describes = []
         remove_rel = []
         for relationship in self.document.relationships:
-            if relationship.relationshiptype == "DESCRIBES":
-                document_describes.append(relationship.relatedspdxelement)
+            if relationship.relationship_type == "DESCRIBES":
+                document_describes.append(relationship.related_spdx_element)
                 if not relationship.has_comment:
                     remove_rel.append(relationship)
         for relationship in remove_rel:
             self.document.relationships.remove(relationship)
         return document_describes
-
 
     def create_document(self):
         self.document_object = dict()
@@ -498,9 +552,14 @@ class Writer(
         document_describes = self.create_document_describes()
         self.document_object["documentDescribes"] = document_describes
 
+        unique_doc_packages = {}
+        for doc_package in self.document.packages:
+            if doc_package.spdx_id not in unique_doc_packages.keys():
+                unique_doc_packages[doc_package.spdx_id] = doc_package
+
         package_objects = []
         file_objects = []
-        for package in self.document.packages:
+        for package in unique_doc_packages.values():
             package_info_object, files_in_package = self.create_package_info(package)
             package_objects.append(package_info_object)
             file_objects.extend(file for file in files_in_package if file not in file_objects)
@@ -533,4 +592,3 @@ class Writer(
             self.document_object["relationships"] = self.create_relationship_info()
 
         return self.document_object
-

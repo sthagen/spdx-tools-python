@@ -8,16 +8,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from datetime import datetime
+from typing import List, Dict
 
 from spdx import document
+from spdx import utils
 from spdx.document import LicenseConjunction
 from spdx.document import LicenseDisjunction
-from spdx.parsers.builderexceptions import SPDXValueError, CardinalityError, OrderError
+from spdx.package import ExternalPackageRef, PackagePurpose
 from spdx.parsers import rdf
+from spdx.parsers.builderexceptions import SPDXValueError, CardinalityError, OrderError
 from spdx.parsers.loggers import ErrorMessages
-from spdx import utils
 from spdx.utils import UnKnown
-
 
 ERROR_MESSAGES = rdf.ERROR_MESSAGES
 
@@ -582,7 +584,7 @@ class SnippetParser(BaseParser):
                 return self.builder.set_snippet_copyright(self.document, copyright_text)
             except CardinalityError:
                 self.more_than_one_error("SNIPPET_COPYRIGHT")
-        else:
+        elif copyright_text is not None:
             self.value_error("SNIPPET_COPYRIGHT", copyright_text)
 
     def parse_snippet_license_comment(self, license_comment):
@@ -631,11 +633,11 @@ class SnippetParser(BaseParser):
                     self.document, license_object
                 )
             except SPDXValueError:
-                self.value_error("SNIPPET_SINGLE_LICS", concluded_license)
+                self.value_error("SNIPPET_CONCLUDED_LICENSE", concluded_license)
             except CardinalityError:
-                self.more_than_one_error("SNIPPET_SINGLE_LICS")
-        else:
-            self.value_error("SNIPPET_SINGLE_LICS", concluded_license)
+                self.more_than_one_error("SNIPPET_CONCLUDED_LICENSE")
+        elif concluded_license is not None:
+            self.value_error("SNIPPET_CONCLUDED_LICENSE", concluded_license)
 
     def parse_snippet_license_info_from_snippet(self, license_info_from_snippet):
         """
@@ -658,7 +660,7 @@ class SnippetParser(BaseParser):
                         self.value_error("SNIPPET_LIC_INFO", lic_in_snippet)
                 else:
                     self.value_error("SNIPPET_LIC_INFO", lic_in_snippet)
-        else:
+        elif license_info_from_snippet is not None:
             self.value_error("SNIPPET_LIC_INFO_FIELD", license_info_from_snippet)
 
 
@@ -748,7 +750,7 @@ class FileParser(BaseParser):
             self.parse_file_comment(file.get("comment"))
             self.parse_file_notice_text(file.get("noticeText"))
             self.parse_file_contributors(file.get("fileContributors"))
-            self.parse_file_attribution_text(file.get("fileAttributeTexts"))
+            self.parse_file_attribution_text(file.get("attributionTexts"))
             self.parse_file_dependencies(file.get("fileDependencies"))
             self.parse_annotations(file.get("annotations"))
             self.parse_file_chksum(file.get("sha1"))
@@ -788,7 +790,8 @@ class FileParser(BaseParser):
     def parse_file_types(self, file_types):
         """
         Parse File types
-        - file_types: Python list of file types (str/unicode: fileType_archive, fileType_binary, fileType_source or fileType_other)
+        - file_types: Python list of file types (str/unicode: fileType_archive, fileType_binary, fileType_source or
+        fileType_other)
         """
         if isinstance(file_types, list):  # file_types is an array in JSON examples...
             for file_type in file_types:
@@ -833,34 +836,34 @@ class FileParser(BaseParser):
                 self.more_than_one_error("FILE_SINGLE_LICS")
             except OrderError:
                 self.order_error("FILE_SINGLE_LICS", "FILE_NAME")
-        else:
+        elif concluded_license is not None:
             self.value_error("FILE_SINGLE_LICS", concluded_license)
 
-    def parse_file_license_info_in_files(self, license_info_from_files):
+    def parse_file_license_info_in_files(self, license_info_in_files):
         """
         Parse File license information from files
         - license_info_from_files: Python list of licenses information from files (str/unicode)
         """
-        if isinstance(license_info_from_files, list):
-            for license_info_from_file in license_info_from_files:
-                if isinstance(license_info_from_file, str):
+        if isinstance(license_info_in_files, list):
+            for license_info_in_file in license_info_in_files:
+                if isinstance(license_info_in_file, str):
                     lic_parser = utils.LicenseListParser()
                     lic_parser.build(write_tables=0, debug=0)
                     license_object = self.replace_license(
-                        lic_parser.parse(license_info_from_file)
+                        lic_parser.parse(license_info_in_file)
                     )
                     try:
                         self.builder.set_file_license_in_file(
                             self.document, license_object
                         )
                     except SPDXValueError:
-                        self.value_error("FILE_LIC_FRM_FILES", license_info_from_file)
+                        self.value_error("FILE_LIC_IN_FILES", license_info_in_file)
                     except OrderError:
-                        self.order_error("FILE_LIC_FRM_FILES", "FILE_NAME")
+                        self.order_error("FILE_LIC_IN_FILES", "FILE_NAME")
                 else:
-                    self.value_error("FILE_LIC_FRM_FILES", license_info_from_file)
-        else:
-            self.value_error("FILE_LIC_FRM_FILES_FIELD", license_info_from_files)
+                    self.value_error("FILE_LIC_IN_FILES", license_info_in_file)
+        elif license_info_in_files is not None:
+            self.value_error("FILE_LIC_IN_FILES_FIELD", license_info_in_files)
 
     def parse_file_license_comments(self, license_comments):
         """
@@ -884,13 +887,11 @@ class FileParser(BaseParser):
         Parse File attribution texts
         - file_attribution_texts: list in yaml, json and string in xml format
         """
-        if isinstance(file_attribution_texts, list) or isinstance(
-            file_attribution_texts, str
-        ):
+        if isinstance(file_attribution_texts, list):
             for file_attribution_text in file_attribution_texts:
                 try:
                     return self.builder.set_file_attribution_text(
-                        self.document, file_attribution_texts
+                        self.document, file_attribution_text
                     )
                 except CardinalityError:
                     self.more_than_one_error("FILE_ATTRIBUTION_TEXT")
@@ -898,6 +899,15 @@ class FileParser(BaseParser):
                     self.order_error("FILE_ATTRIBUTION_TEXT", "FILE_NAME")
             else:
                 self.value_error("FILE_ATTRIBUTION_TEXT", file_attribution_texts)
+        elif isinstance(file_attribution_texts, str):
+            try:
+                return self.builder.set_file_attribution_text(
+                    self.document, file_attribution_texts
+                )
+            except CardinalityError:
+                self.more_than_one_error("FILE_ATTRIBUTION_TEXT")
+            except OrderError:
+                self.order_error("FILE_ATTRIBUTION_TEXT", "FILE_NAME")
 
     def parse_file_copyright_text(self, copyright_text):
         """
@@ -911,7 +921,7 @@ class FileParser(BaseParser):
                 self.more_than_one_error("FILE_COPYRIGHT_TEXT")
             except OrderError:
                 self.order_error("FILE_COPYRIGHT_TEXT", "FILE_NAME")
-        else:
+        elif copyright_text is not None:
             self.value_error("FILE_COPYRIGHT_TEXT", copyright_text)
 
     def parse_file_artifacts(self, file_artifacts):
@@ -1065,11 +1075,17 @@ class PackageParser(BaseParser):
             self.parse_pkg_license_comment(package.get("licenseComments"))
             self.parse_pkg_copyright_text(package.get("copyrightText"))
             self.parse_pkg_summary(package.get("summary"))
+            self.parse_pkg_comment(package.get("comment"))
             self.parse_pkg_description(package.get("description"))
             self.parse_annotations(package.get("annotations"))
             self.parse_pkg_attribution_text(package.get("attributionTexts"))
             self.parse_pkg_files(package.get("files"))
             self.parse_pkg_chksum(package.get("sha1"))
+            self.parse_package_external_refs(package.get("externalRefs"))
+            self.parse_primary_package_purpose(package.get("primaryPackagePurpose"))
+            self.parse_release_date(package.get("releaseDate"))
+            self.parse_built_date(package.get("builtDate"))
+            self.parse_valid_until_date(package.get("validUntilDate"))
         else:
             self.value_error("PACKAGE", package)
 
@@ -1226,7 +1242,7 @@ class PackageParser(BaseParser):
                 pkg_verif_code_field.get("packageVerificationCodeExcludedFiles")
             )
             return self.parse_pkg_verif_code(pkg_verif_code_field.get("packageVerificationCodeValue"))
-        else:
+        elif pkg_verif_code_field is not None:
             self.value_error("PKG_VERIF_CODE_FIELD", pkg_verif_code_field)
 
     def parse_pkg_verif_code(self, pkg_verif_code):
@@ -1321,7 +1337,7 @@ class PackageParser(BaseParser):
                 self.more_than_one_error("PKG_SINGLE_LICS")
             except OrderError:
                 self.order_error("PKG_SINGLE_LICS", "PKG_NAME")
-        else:
+        elif pkg_concluded_license is not None:
             self.value_error("PKG_SINGLE_LICS", pkg_concluded_license)
 
     def parse_pkg_license_info_from_files(self, license_info_from_files):
@@ -1351,7 +1367,7 @@ class PackageParser(BaseParser):
                         self.order_error("PKG_LIC_FRM_FILES", "PKG_NAME")
                 else:
                     self.value_error("PKG_LIC_FRM_FILES", license_info_from_file)
-        else:
+        elif license_info_from_files is not None:
             self.value_error("PKG_LIC_FRM_FILES_FIELD", license_info_from_files)
 
     def parse_pkg_attribution_text(self, pkg_attribution_texts):
@@ -1395,7 +1411,7 @@ class PackageParser(BaseParser):
                 self.more_than_one_error("PKG_DECL_LIC")
             except OrderError:
                 self.order_error("PKG_DECL_LIC", "PKG_NAME")
-        else:
+        elif pkg_declared_license is not None:
             self.value_error("PKG_DECL_LIC", pkg_declared_license)
 
     def parse_pkg_license_comment(self, pkg_license_comment):
@@ -1427,7 +1443,7 @@ class PackageParser(BaseParser):
                 self.more_than_one_error("PKG_COPYRIGHT_TEXT")
             except OrderError:
                 self.order_error("PKG_COPYRIGHT_TEXT", "PKG_NAME")
-        else:
+        elif pkg_copyright_text is not None:
             self.value_error("PKG_COPYRIGHT_TEXT", pkg_copyright_text)
 
     def parse_pkg_summary(self, pkg_summary):
@@ -1444,6 +1460,21 @@ class PackageParser(BaseParser):
                 self.order_error("PKG_SUMMARY", "PKG_NAME")
         elif pkg_summary is not None:
             self.value_error("PKG_SUMMARY", pkg_summary)
+
+    def parse_pkg_comment(self, pkg_comment):
+        """
+        Parse Package comment
+        - pkg_comment: Python str/unicode
+        """
+        if isinstance(pkg_comment, str):
+            try:
+                return self.builder.set_pkg_comment(self.document, pkg_comment)
+            except CardinalityError:
+                self.more_than_one_error("PKG_COMMENT")
+            except OrderError:
+                self.order_error("PKG_COMMENT", "PKG_NAME")
+        elif pkg_comment is not None:
+            self.value_error("PKG_COMMENT", pkg_comment)
 
     def parse_pkg_description(self, pkg_description):
         """
@@ -1476,7 +1507,7 @@ class PackageParser(BaseParser):
                     self.parse_file(pkg_file.get("File"))
                 else:
                     self.value_error("PKG_FILE", pkg_file)
-        else:
+        elif pkg_files is not None:
             self.value_error("PKG_FILES", pkg_files)
 
     def parse_pkg_chksum(self, pkg_chksum):
@@ -1494,6 +1525,61 @@ class PackageParser(BaseParser):
         elif pkg_chksum is not None:
             self.value_error("PKG_CHECKSUM", pkg_chksum)
 
+    def parse_package_external_refs(self, external_refs: List[Dict]):
+        if external_refs is None:
+            return
+        if not isinstance(external_refs, list):
+            self.value_error("PACKAGE_EXTERNAL_REFS", external_refs)
+            return
+
+        for external_ref_dict in external_refs:
+            external_ref = ExternalPackageRef(category=external_ref_dict["referenceCategory"],
+                                              pkg_ext_ref_type=external_ref_dict["referenceType"],
+                                              locator=external_ref_dict["referenceLocator"])
+            if "comment" in external_ref_dict:
+                external_ref.comment = external_ref_dict["comment"]
+            self.package.add_pkg_ext_refs(external_ref)
+
+    def parse_primary_package_purpose(self, primary_package_purpose: str):
+        if primary_package_purpose is None:
+            return
+
+        if primary_package_purpose not in [purpose.name for purpose in PackagePurpose]:
+            self.value_error("PRIMARY_PACKAGE_PURPOSE", primary_package_purpose)
+            return
+
+        purpose_enum = PackagePurpose[primary_package_purpose]
+        self.package.primary_package_purpose = purpose_enum
+
+    def parse_release_date(self, release_date: str):
+        if release_date is None:
+            return
+
+        parsed_date: datetime = utils.datetime_from_iso_format(release_date)
+        if parsed_date is not None:
+            self.package.release_date = parsed_date
+        else:
+            self.value_error("RELEASE_DATE", release_date)
+
+    def parse_built_date(self, built_date: str):
+        if built_date is None:
+            return
+
+        parsed_date: datetime = utils.datetime_from_iso_format(built_date)
+        if parsed_date is not None:
+            self.package.built_date = parsed_date
+        else:
+            self.value_error("BUILT_DATE", built_date)
+            
+    def parse_valid_until_date(self, valid_until_date: str):
+        if valid_until_date is None:
+            return
+
+        parsed_date: datetime = utils.datetime_from_iso_format(valid_until_date)
+        if parsed_date is not None:
+            self.package.valid_until_date = parsed_date
+        else:
+            self.value_error("VALID_UNTIL_DATE", valid_until_date)
 
 def flatten_document(document):
     """
@@ -1520,6 +1606,7 @@ def flatten_document(document):
                     break
 
     return document
+
 
 class Parser(
     CreationInfoParser,
@@ -1687,7 +1774,6 @@ class Parser(
             return True
         else:
             self.value_error("DOC_DESCRIBES", doc_described_objects)
-
 
     def parse_packages(self, packages):
         """

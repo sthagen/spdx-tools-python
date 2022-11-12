@@ -896,7 +896,7 @@ class SnippetParser(LicenseParser):
                         lics = self.handle_lics(licenses)
                         self.builder.set_snip_concluded_license(self.doc, lics)
                     except SPDXValueError:
-                        self.value_error("SNIPPET_SINGLE_LICS", licenses)
+                        self.value_error("SNIPPET_CONCLUDED_LICENSE", licenses)
         except CardinalityError:
             self.more_than_one_error(
                 "package {0}".format(self.spdx_namespace["licenseConcluded"])
@@ -1220,7 +1220,7 @@ class RelationshipParser(BaseParser):
             for sub, pre, rel_ele in self.graph.triples(
                 (relation_term, self.spdx_namespace["relatedSpdxElement"], None)
             ):
-                related_element = str(rel_ele.split("#")[1])
+                related_element = str(rel_ele.split("#")[1]) if '#' in rel_ele else rel_ele
         except:
             related_element = None
 
