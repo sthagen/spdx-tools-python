@@ -8,11 +8,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict, List
 
 from rdflib import Literal
 
-from spdx import document, utils
+from spdx import license, utils
 from spdx.package import ExternalPackageRef
+from spdx.relationship import Relationship
+from spdx.utils import update_dict_item_with_new_item
 
 
 class BaseWriter(object):
@@ -32,11 +35,11 @@ class BaseWriter(object):
         Return a string representation of a license or spdx.utils special object
         """
         if isinstance(
-            license_field, (document.LicenseDisjunction, document.LicenseConjunction)
+            license_field, (license.LicenseDisjunction, license.LicenseConjunction)
         ):
             return "({})".format(license_field)
 
-        if isinstance(license_field, document.License):
+        if isinstance(license_field, license.License):
             license_str = license_field.identifier.__str__()
         else:
             license_str = license_field.__str__()
@@ -122,7 +125,7 @@ class PackageWriter(BaseWriter):
             external_ref_dict["comment"] = external_ref.comment
         return external_ref_dict
 
-    def create_package_info(self, package):
+    def create_package_info(self, package, annotations_by_spdx_id):
         package_object = dict()
         package_object["SPDXID"] = self.spdx_id(package.spdx_id)
         package_object["name"] = package.name
@@ -184,7 +187,7 @@ class PackageWriter(BaseWriter):
             package_object["homepage"] = package.homepage.__str__()
 
         if package.has_optional_field("primary_package_purpose"):
-            package_object["primaryPackagePurpose"] = package.primary_package_purpose.name
+            package_object["primaryPackagePurpose"] = package.primary_package_purpose.name.replace("_", "-")
 
         if package.has_optional_field("release_date"):
             package_object["releaseDate"] = utils.datetime_iso_format(package.release_date)
@@ -198,15 +201,10 @@ class PackageWriter(BaseWriter):
         if package.has_optional_field("pkg_ext_refs"):
             package_object["externalRefs"] = [self.external_reference_as_dict(external_ref) for external_ref in
                                               package.pkg_ext_refs]
+        if package.spdx_id in annotations_by_spdx_id:
+            package_object["annotations"] = annotations_by_spdx_id[package.spdx_id]
 
-        files_in_package = []
-        if package.has_optional_field("files"):
-            package_object["hasFiles"] = []
-            for file in package.files:
-                package_object["hasFiles"].append(file.spdx_id)
-                files_in_package.append(self.create_file_info(file))
-
-        return package_object, files_in_package
+        return package_object
 
 
 class FileWriter(BaseWriter):
@@ -232,14 +230,7 @@ class FileWriter(BaseWriter):
 
         return artifact_of_objects
 
-    def create_file_info(self, file):
-        file_types = {
-            1: "fileType_source",
-            2: "fileType_binary",
-            3: "fileType_archive",
-            4: "fileType_other",
-        }
-
+    def create_file_info(self, file, annotations_by_spdx_id):
         file_object = dict()
 
         file_object["fileName"] = file.name
@@ -260,8 +251,11 @@ class FileWriter(BaseWriter):
         if file.has_optional_field("comment"):
             file_object["comment"] = file.comment
 
-        if file.has_optional_field("type"):
-            file_object["fileTypes"] = [file_types.get(file.type)]
+        if file.has_optional_field("file_types"):
+            types = []
+            for file_type in file.file_types:
+                types.append(file_type.name)
+            file_object["fileTypes"] = types
 
         if file.has_optional_field("license_comment"):
             file_object["licenseComments"] = file.license_comment
@@ -288,6 +282,9 @@ class FileWriter(BaseWriter):
 
         if valid_artifacts:
             file_object["artifactOf"] = self.create_artifact_info(file)
+
+        if file.spdx_id in annotations_by_spdx_id:
+            file_object["annotations"] = annotations_by_spdx_id[file.spdx_id]
 
         return file_object
 
@@ -324,26 +321,30 @@ class AnnotationInfoWriter(BaseWriter):
     def __init__(self, document):
         super(AnnotationInfoWriter, self).__init__(document)
 
-    def create_annotation_info(self):
+    def create_annotations_by_spdx_id(self) -> Dict:
         """
-        The way how tools-python manages its models makes difficult to classify
-        annotations (by document, files and packages) and some of them could end up omitted.
-        This method sets every annotation as part of the spdx document itself,
-        avoiding them to be omitted.
+        Create a dict with annotations_by_spdx_id and use the spdx_id of the element that is annotated as key.
+        These keys are then used to attach the annotation to the corresponding SPDX element.
         """
-        annotation_objects = []
+        annotations_by_spdx_id = dict()
+
+        if not self.document.annotations:
+            return annotations_by_spdx_id
 
         for annotation in self.document.annotations:
             annotation_object = dict()
-            annotation_object["SPDXID"] = self.spdx_id(annotation.spdx_id)
             annotation_object["annotator"] = annotation.annotator.__str__()
             annotation_object["annotationDate"] = annotation.annotation_date_iso_format
             annotation_object["annotationType"] = annotation.annotation_type
             annotation_object["comment"] = annotation.comment
 
-            annotation_objects.append(annotation_object)
+            annotation_spdx_id = self.spdx_id(annotation.spdx_id)
+            if annotation_spdx_id not in annotations_by_spdx_id:
+                annotations_by_spdx_id[annotation_spdx_id] = [annotation_object]
+            else:
+                annotations_by_spdx_id[annotation_spdx_id].append(annotation_object)
 
-        return annotation_objects
+        return annotations_by_spdx_id
 
 
 class RelationshipInfoWriter(BaseWriter):
@@ -354,26 +355,17 @@ class RelationshipInfoWriter(BaseWriter):
     def __init__(self, document):
         super(RelationshipInfoWriter, self).__init__(document)
 
-    def create_relationship_info(self):
-        relationship_objects = []
+    def create_relationship_info(self, relationship: Relationship):
+        relationship_object = dict()
+        relationship_object["spdxElementId"] = relationship.spdx_element_id
+        relationship_object[
+            "relatedSpdxElement"
+        ] = relationship.related_spdx_element
+        relationship_object["relationshipType"] = relationship.relationship_type
+        if relationship.has_comment:
+            relationship_object["comment"] = relationship.relationship_comment
 
-        for relationship_term in self.document.relationships:
-            if relationship_term.relationship_type == "DESCRIBES":
-                continue
-            if relationship_term.relationship_type == "CONTAINS":
-                continue
-            relationship_object = dict()
-            relationship_object["spdxElementId"] = relationship_term.spdx_element_id
-            relationship_object[
-                "relatedSpdxElement"
-            ] = relationship_term.related_spdx_element
-            relationship_object["relationshipType"] = relationship_term.relationship_type
-            if relationship_term.has_comment:
-                relationship_object["comment"] = relationship_term.relationship_comment
-
-            relationship_objects.append(relationship_object)
-
-        return relationship_objects
+        return relationship_object
 
 
 class SnippetWriter(BaseWriter):
@@ -384,14 +376,15 @@ class SnippetWriter(BaseWriter):
     def __init__(self, document):
         super(SnippetWriter, self).__init__(document)
 
-    def create_snippet_info(self):
+    def create_snippet_info(self, annotations_by_spdx_id):
         snippet_info_objects = []
         snippets = self.document.snippet
 
         for snippet in snippets:
+            snippet_from_file_spdx_id = self.spdx_id(snippet.snip_from_file_spdxid)
             snippet_object = dict()
             snippet_object["SPDXID"] = self.spdx_id(snippet.spdx_id)
-            snippet_object["fileId"] = self.spdx_id(snippet.snip_from_file_spdxid)
+            snippet_object["snippetFromFile"] = snippet_from_file_spdx_id
 
             if snippet.has_optional_field("copyright"):
                 snippet_object["copyrightText"] = snippet.copyright
@@ -400,9 +393,12 @@ class SnippetWriter(BaseWriter):
                 snippet_object["licenseConcluded"] = self.license(snippet.conc_lics)
 
             if snippet.has_optional_field("licenses_in_snippet"):
-                snippet_object["licenseInfoFromSnippet"] = list(
+                snippet_object["licenseInfoInSnippets"] = list(
                     map(self.license, snippet.licenses_in_snippet)
                 )
+            byte_range = {"endPointer": {"offset": snippet.byte_range[1], "reference": snippet_from_file_spdx_id},
+                          "startPointer": {"offset": snippet.byte_range[0], "reference": snippet_from_file_spdx_id}}
+            snippet_object["ranges"] = [byte_range]
 
             if snippet.has_optional_field("name"):
                 snippet_object["name"] = snippet.name
@@ -415,6 +411,15 @@ class SnippetWriter(BaseWriter):
 
             if snippet.has_optional_field("license_comment"):
                 snippet_object["licenseComments"] = snippet.license_comment
+
+            if snippet.spdx_id in annotations_by_spdx_id:
+                snippet_object["annotations"] = annotations_by_spdx_id[snippet.spdx_id]
+
+            if snippet.has_optional_field("line_range"):
+                line_range = {
+                    "endPointer": {"lineNumber": snippet.line_range[1], "reference": snippet_from_file_spdx_id},
+                    "startPointer": {"lineNumber": snippet.line_range[0], "reference": snippet_from_file_spdx_id}}
+                snippet_object["ranges"].append(line_range)
 
             snippet_info_objects.append(snippet_object)
 
@@ -499,6 +504,7 @@ class Writer(
     """
 
     def __init__(self, document):
+        self.doc_spdx_id = self.spdx_id(document.spdx_id)
         super(Writer, self).__init__(document)
 
     def create_ext_document_references(self):
@@ -524,20 +530,48 @@ class Writer(
 
         return ext_document_reference_objects
 
-    def create_document_describes(self):
-        """
-        Create a list of SPDXIDs that the document describes according to DESCRIBES-relationship.
-        """
-        document_describes = []
-        remove_rel = []
+    def create_relationships(self) -> List[Dict]:
+        packages_spdx_ids = [package.spdx_id for package in self.document.packages]
+        files_spdx_ids = [file.spdx_id for file in self.document.files]
+        # we take the package_objects from document_object if any exist because we will modify them to add
+        # jsonyamlxml-specific fields
+        if "packages" in self.document_object:
+            packages_by_spdx_id = {package["SPDXID"]: package for package in self.document_object["packages"]}
+        else:
+            packages_by_spdx_id = {}
+
+        relationship_objects = []
         for relationship in self.document.relationships:
-            if relationship.relationship_type == "DESCRIBES":
-                document_describes.append(relationship.related_spdx_element)
-                if not relationship.has_comment:
-                    remove_rel.append(relationship)
-        for relationship in remove_rel:
-            self.document.relationships.remove(relationship)
-        return document_describes
+            if relationship.relationship_type == "CONTAINS" and relationship.spdx_element_id in packages_spdx_ids \
+                    and relationship.related_spdx_element in files_spdx_ids:
+                update_dict_item_with_new_item(packages_by_spdx_id[relationship.spdx_element_id], "hasFiles",
+                                               relationship.related_spdx_element)
+                if relationship.has_comment:
+                    relationship_objects.append(self.create_relationship_info(relationship))
+
+            elif relationship.relationship_type == "CONTAINED_BY" and relationship.spdx_element_id in files_spdx_ids \
+                    and relationship.related_spdx_element in packages_spdx_ids:
+                update_dict_item_with_new_item(packages_by_spdx_id[relationship.related_spdx_element],
+                                                    "hasFiles", relationship.spdx_element_id)
+                if relationship.has_comment:
+                    relationship_objects.append(self.create_relationship_info(relationship))
+
+            elif relationship.relationship_type == "DESCRIBES" and relationship.spdx_element_id == self.document.spdx_id:
+                update_dict_item_with_new_item(self.document_object, "documentDescribes",
+                                               relationship.related_spdx_element)
+                if relationship.has_comment:
+                    relationship_objects.append(self.create_relationship_info(relationship))
+
+            elif relationship.relationship_type == "DESCRIBED_BY" and relationship.related_spdx_element == self.document.spdx_id:
+                update_dict_item_with_new_item(self.document_object, "documentDescribes",
+                                               relationship.spdx_element_id)
+                if relationship.has_comment:
+                    relationship_objects.append(self.create_relationship_info(relationship))
+
+            else:
+                relationship_objects.append(self.create_relationship_info(relationship))
+
+        return relationship_objects
 
     def create_document(self):
         self.document_object = dict()
@@ -546,25 +580,26 @@ class Writer(
         self.document_object["documentNamespace"] = self.document.namespace.__str__()
         self.document_object["creationInfo"] = self.create_creation_info()
         self.document_object["dataLicense"] = self.license(self.document.data_license)
-        self.document_object["SPDXID"] = self.spdx_id(self.document.spdx_id)
+        self.document_object["SPDXID"] = self.doc_spdx_id
         self.document_object["name"] = self.document.name
-
-        document_describes = self.create_document_describes()
-        self.document_object["documentDescribes"] = document_describes
+        annotations_by_spdx_id = self.create_annotations_by_spdx_id()
 
         unique_doc_packages = {}
         for doc_package in self.document.packages:
             if doc_package.spdx_id not in unique_doc_packages.keys():
                 unique_doc_packages[doc_package.spdx_id] = doc_package
-
-        package_objects = []
-        file_objects = []
-        for package in unique_doc_packages.values():
-            package_info_object, files_in_package = self.create_package_info(package)
-            package_objects.append(package_info_object)
-            file_objects.extend(file for file in files_in_package if file not in file_objects)
-        self.document_object["packages"] = package_objects
-        self.document_object["files"] = file_objects
+        if unique_doc_packages:
+            package_objects = []
+            for package in unique_doc_packages.values():
+                package_info_object = self.create_package_info(package, annotations_by_spdx_id)
+                package_objects.append(package_info_object)
+            self.document_object["packages"] = package_objects
+        if self.document.files:
+            file_objects = []
+            for file in self.document.files:
+                file_object = self.create_file_info(file, annotations_by_spdx_id)
+                file_objects.append(file_object)
+            self.document_object["files"] = file_objects
 
         if self.document.has_comment:
             self.document_object["comment"] = self.document.comment
@@ -583,12 +618,14 @@ class Writer(
             self.document_object["reviewers"] = self.create_review_info()
 
         if self.document.snippet:
-            self.document_object["snippets"] = self.create_snippet_info()
+            self.document_object["snippets"] = self.create_snippet_info(annotations_by_spdx_id)
 
-        if self.document.annotations:
-            self.document_object["annotations"] = self.create_annotation_info()
+        if self.doc_spdx_id in annotations_by_spdx_id:
+            self.document_object["annotations"] = annotations_by_spdx_id[self.doc_spdx_id]
 
         if self.document.relationships:
-            self.document_object["relationships"] = self.create_relationship_info()
+            relationship_objects = self.create_relationships()
+            if relationship_objects:
+                self.document_object["relationships"] = relationship_objects
 
         return self.document_object

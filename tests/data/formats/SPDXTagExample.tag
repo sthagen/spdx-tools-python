@@ -51,7 +51,7 @@ PackageDescription: <text>This utility translates and SPDX RDF XML document to a
 PackageAttributionText: <text>The GNU C Library is free software.  See the file COPYING.LIB for copying conditions, and LICENSES for notices about a few contributions that require these additional notices to be distributed.  License copyright years may be listed using range notation, e.g., 1996-2015, indicating that every year in the range, inclusive, is a copyrightable year that would otherwise be listed individually.</text>
 PackageComment: <text>This package includes several sub-packages.</text>
 
-PackageCopyrightText: <text> Copyright 2010, 2011 Source Auditor Inc.</text>
+PackageCopyrightText: <text>Copyright 2010, 2011 Source Auditor Inc.</text>
 
 PackageLicenseDeclared: (LicenseRef-3 AND LicenseRef-4 AND Apache-2.0 AND MPL-1.1 AND LicenseRef-1 AND LicenseRef-2)
 PackageLicenseConcluded: (LicenseRef-3 AND LicenseRef-4 AND Apache-1.0 AND Apache-2.0 AND MPL-1.1 AND LicenseRef-1 AND LicenseRef-2)
@@ -72,6 +72,7 @@ ExternalRefComment: <text>NIST National Vulnerability Database (NVD) describes s
 FileName: src/org/spdx/parser/DOAPProject.java
 SPDXID: SPDXRef-File1
 FileType: SOURCE
+FileType: TEXT
 FileChecksum: SHA1: 2fd4e1c67a2d28fced849ee1bb76e7391b93eb12
 LicenseConcluded: Apache-2.0
 LicenseInfoInFile: Apache-2.0
@@ -80,6 +81,7 @@ FileCopyrightText: <text>Copyright 2010, 2011 Source Auditor Inc.</text>
 FileName: Jenna-2.6.3/jena-2.6.3-sources.jar
 SPDXID: SPDXRef-File2
 FileType: ARCHIVE
+FileType: OTHER
 FileChecksum: SHA1: 3ab4e1c67a2d28fced849ee1bb76e7391b93f125
 LicenseConcluded: LicenseRef-1
 LicenseInfoInFile: LicenseRef-1
@@ -87,18 +89,19 @@ LicenseComments: <text>This license is used by Jena</text>
 FileCopyrightText: <text>(c) Copyright 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009 Hewlett-Packard Development Company, LP</text>
 ArtifactOfProjectName: Jena
 ArtifactOfProjectHomePage: http://www.openjena.org/
-ArtifactOfProjectURI: UNKNOWN
+ArtifactOfProjectURI: http://www.openjena.org/doap.rdf
 FileComment: <text>This file belongs to Jena</text>
 
 ## Snippet Information
 SnippetSPDXID: SPDXRef-Snippet
 SnippetFromFileSPDXID: SPDXRef-DoapSource
 SnippetLicenseComments: <text>The concluded license was taken from package xyz, from which the snippet was copied into the current file. The concluded license information was found in the COPYING.txt file in package xyz.</text>
-SnippetCopyrightText: <text> Copyright 2008-2010 John Smith </text>
+SnippetCopyrightText: <text>Copyright 2008-2010 John Smith</text>
 SnippetComment: <text>This snippet was identified as significant and highlighted in this Apache-2.0 file, when a commercial scanner identified it as being derived from file foo.c in package xyz which is licensed under GPL-2.0-or-later.</text>
 SnippetName: from linux kernel
 SnippetLicenseConcluded: Apache-2.0
 LicenseInfoInSnippet: Apache-2.0
+SnippetByteRange: 310:420
 
 ## License Information
 LicenseID: LicenseRef-3

@@ -9,26 +9,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum, auto
 from functools import total_ordering
 import hashlib
 
 from spdx import checksum
-from spdx import document
 from spdx import utils
+from spdx.license import License
+from spdx.parsers.builderexceptions import SPDXValueError
 
 
-class FileType(object):
-    SOURCE = 1
-    BINARY = 2
-    ARCHIVE = 3
-    OTHER = 4
-    APPLICATION = 5
-    AUDIO = 6
-    IMAGE = 7
-    TEXT = 8
-    VIDEO = 9
-    DOCUMENTATION = 9
-    SPDX = 10
+class FileType(Enum):
+    SOURCE = auto()
+    BINARY = auto()
+    ARCHIVE = auto()
+    OTHER = auto()
+    APPLICATION = auto()
+    AUDIO = auto()
+    IMAGE = auto()
+    TEXT = auto()
+    DOCUMENTATION = auto()
+    SPDX = auto()
+    VIDEO = auto()
+
+
+def file_type_from_rdf(rdf_file_type: str) -> FileType:
+    """e.g. convert fileType_source to FileType.SOURCE"""
+    file_type_str = rdf_file_type.split("_")[1].upper()
+
+    if file_type_str not in FileType.__members__:
+        raise SPDXValueError("File:FileType")
+
+    return FileType[file_type_str]
+
+
+def file_type_to_rdf(file_type: FileType) -> str:
+    """e.g. convert SOURCE to fileType_source"""
+    return f"fileType_{file_type.name.lower()}"
 
 
 @total_ordering
@@ -40,10 +57,9 @@ class File(object):
     - spdx_id: Uniquely identify any element in an SPDX document which may be
     referenced by other elements. Mandatory, one. Type: str.
     - comment: File comment str, Optional zero or one.
-    - type: one of FileType.SOURCE, FileType.BINARY, FileType.ARCHIVE
-      and FileType.OTHER, optional zero or one.
+    - file_types: list of file types. Cardinality 0..*
     - chksum: SHA1, Mandatory one.
-    - conc_lics: Mandatory one. document.License or utils.NoAssert or utils.SPDXNone.
+    - conc_lics: Mandatory one. license.License or utils.NoAssert or utils.SPDXNone.
     - licenses_in_file: list of licenses found in file, mandatory one or more.
       document.License or utils.SPDXNone or utils.NoAssert.
     - document.license or utils.NoAssert or utils.SPDXNone.
@@ -62,7 +78,7 @@ class File(object):
         self.name = name
         self.spdx_id = spdx_id
         self.comment = None
-        self.type = None
+        self.file_types = []
         self.checksums = [chksum]
         self.conc_lics = None
         self.licenses_in_file = []
@@ -118,7 +134,7 @@ class File(object):
         """
         messages.push_context(self.name)
         self.validate_concluded_license(messages)
-        self.validate_type(messages)
+        self.validate_file_types(messages)
         self.validate_checksum(messages)
         self.validate_licenses_in_file(messages)
         self.validate_copyright(messages)
@@ -140,7 +156,7 @@ class File(object):
         ):
             messages.append(
                 "File copyright must be str or unicode or "
-                "utils.NoAssert or utils.SPDXNone"
+                "spdx.utils.NoAssert or spdx.utils.SPDXNone"
             )
 
         return messages
@@ -158,41 +174,32 @@ class File(object):
     def validate_licenses_in_file(self, messages):
         for license_in_file in self.licenses_in_file:
             if not isinstance(
-                license_in_file, (utils.SPDXNone, utils.NoAssert, document.License)
+                license_in_file, (utils.SPDXNone, utils.NoAssert, License)
             ):
                 messages.append(
                     "License in file must be instance of "
                     "spdx.utils.SPDXNone or spdx.utils.NoAssert or "
-                    "spdx.document.License"
+                    "spdx.license.License"
                 )
 
         return messages
 
     def validate_concluded_license(self, messages):
         if self.conc_lics and not isinstance(
-            self.conc_lics, (utils.SPDXNone, utils.NoAssert, document.License)
+            self.conc_lics, (utils.SPDXNone, utils.NoAssert, License)
         ):
             messages.append(
                 "File concluded license must be instance of "
                 "spdx.utils.SPDXNone or spdx.utils.NoAssert or "
-                "spdx.document.License"
+                "spdx.license.License"
             )
 
         return messages
 
-    def validate_type(self, messages):
-        if self.type not in [
-            None,
-            FileType.SOURCE,
-            FileType.OTHER,
-            FileType.BINARY,
-            FileType.ARCHIVE,
-        ]:
-            messages.append(
-                "File type must be one of the constants defined in "
-                "class spdx.file.FileType"
-            )
-
+    def validate_file_types(self, messages):
+        for file_type in self.file_types:
+            if not isinstance(file_type, FileType):
+                messages.append(f"{file_type} is not of type FileType.")
         return messages
 
     def validate_checksum(self, messages):

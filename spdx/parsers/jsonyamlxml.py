@@ -9,16 +9,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
-from typing import List, Dict
+from enum import Enum, auto
+from typing import List, Dict, Tuple, Callable
 
 from spdx import document
 from spdx import utils
-from spdx.document import LicenseConjunction
-from spdx.document import LicenseDisjunction
-from spdx.package import ExternalPackageRef, PackagePurpose
+from spdx.license import LicenseConjunction, LicenseDisjunction
+from spdx.package import ExternalPackageRef, PackagePurpose, Package
 from spdx.parsers import rdf
 from spdx.parsers.builderexceptions import SPDXValueError, CardinalityError, OrderError
 from spdx.parsers.loggers import ErrorMessages
+from spdx.snippet import Snippet
 from spdx.utils import UnKnown
 
 ERROR_MESSAGES = rdf.ERROR_MESSAGES
@@ -335,7 +336,7 @@ class AnnotationParser(BaseParser):
     def __init__(self, builder, logger):
         super(AnnotationParser, self).__init__(builder, logger)
 
-    def parse_annotations(self, annotations):
+    def parse_annotations(self, annotations, spdx_id: str = None):
         """
         Parse Annotation Information fields
         - annotations: Python list with Annotation Information dicts in it
@@ -347,7 +348,10 @@ class AnnotationParser(BaseParser):
                         self.parse_annotation_date(annotation.get("annotationDate"))
                         self.parse_annotation_comment(annotation.get("comment"))
                         self.parse_annotation_type(annotation.get("annotationType"))
-                        self.parse_annotation_id(annotation.get("SPDXID"))
+                        if annotation.get("SPDXID"):
+                            self.parse_annotation_id(annotation.get("SPDXID"))
+                        else:
+                            self.parse_annotation_id(spdx_id)
                 else:
                     self.value_error("ANNOTATION", annotation)
 
@@ -483,9 +487,18 @@ class RelationshipParser(BaseParser):
             self.value_error("RELATIONSHIP_COMMENT", relationship_comment)
 
 
+class RangeType(Enum):
+    BYTE = auto()
+    LINE = auto()
+
+
 class SnippetParser(BaseParser):
     def __init__(self, builder, logger):
         super(SnippetParser, self).__init__(builder, logger)
+
+    @property
+    def snippet(self) -> Snippet:
+        return self.document.snippet[-1]
 
     def parse_snippets(self, snippets):
         """
@@ -502,7 +515,7 @@ class SnippetParser(BaseParser):
                         self.parse_snippet_license_comment(
                             snippet.get("licenseComments")
                         )
-                        self.parse_snippet_file_spdxid(snippet.get("fileId"))
+                        self.parse_snippet_file_spdxid(snippet.get("snippetFromFile"))
                         self.parse_snippet_concluded_license(
                             snippet.get("licenseConcluded")
                         )
@@ -510,8 +523,10 @@ class SnippetParser(BaseParser):
                             snippet.get("attributionTexts")
                         )
                         self.parse_snippet_license_info_from_snippet(
-                            snippet.get("licenseInfoFromSnippet")
+                            snippet.get("licenseInfoInSnippets")
                         )
+                        self.parse_annotations(snippet.get("annotations"), spdx_id=snippet.get("SPDXID"))
+                        self.parse_snippet_ranges(snippet.get("ranges"))
                 else:
                     self.value_error("SNIPPET", snippet)
 
@@ -653,7 +668,7 @@ class SnippetParser(BaseParser):
                         lic_parser.parse(lic_in_snippet)
                     )
                     try:
-                        return self.builder.set_snippet_lics_info(
+                        self.builder.set_snippet_lics_info(
                             self.document, license_object
                         )
                     except SPDXValueError:
@@ -662,6 +677,61 @@ class SnippetParser(BaseParser):
                     self.value_error("SNIPPET_LIC_INFO", lic_in_snippet)
         elif license_info_from_snippet is not None:
             self.value_error("SNIPPET_LIC_INFO_FIELD", license_info_from_snippet)
+
+    def parse_snippet_ranges(self, ranges_from_snippet: List[Dict]) -> None:
+        """
+        Parse ranges (byte range and optional line range) from snippet
+        - ranges_from_snippet; Python list of dict
+        """
+        if not isinstance(ranges_from_snippet, list):
+            self.value_error("SNIPPET_RANGES", ranges_from_snippet)
+            return
+
+        for range_dict in ranges_from_snippet:
+            try:
+                range_type = self.validate_range_and_get_type(range_dict)
+                start_end_tuple: Tuple[int, int] = SnippetParser.get_start_end_tuple(range_dict, range_type)
+            except SPDXValueError:
+                self.value_error("SNIPPET_RANGE", range_dict)
+                return
+
+            if range_type == RangeType.BYTE:
+                self.snippet.byte_range = start_end_tuple
+            elif range_type == RangeType.LINE:
+                self.snippet.line_range = start_end_tuple
+
+    @staticmethod
+    def get_start_end_tuple(range_dict: Dict, range_type: RangeType) -> Tuple[int, int]:
+        end_pointer = range_dict["endPointer"]
+        start_pointer = range_dict["startPointer"]
+        if range_type == RangeType.BYTE:
+            start = int(start_pointer["offset"])
+            end = int(end_pointer["offset"])
+        else:
+            start = int(start_pointer["lineNumber"])
+            end = int(end_pointer["lineNumber"])
+        if start > end:
+            raise SPDXValueError("Snippet::ranges")
+
+        return start, end
+
+    def validate_range_and_get_type(self, range_dict: Dict) -> RangeType:
+        if ("startPointer" not in range_dict) or ("endPointer" not in range_dict):
+            raise SPDXValueError("Snippet::ranges")
+        start_pointer_type = self.validate_pointer_and_get_type(range_dict["startPointer"])
+        end_pointer_type = self.validate_pointer_and_get_type(range_dict["endPointer"])
+        if start_pointer_type != end_pointer_type:
+            raise SPDXValueError("Snippet::ranges")
+        return start_pointer_type
+
+    def validate_pointer_and_get_type(self, pointer: Dict) -> RangeType:
+        if self.snippet.snip_from_file_spdxid != pointer["reference"]:
+            raise SPDXValueError("Snippet::ranges")
+        if ("offset" in pointer and "lineNumber" in pointer) or (
+                "offset" not in pointer and "lineNumber" not in pointer):
+            raise SPDXValueError("Snippet::ranges")
+
+        return RangeType.BYTE if "offset" in pointer else RangeType.LINE
 
 
 class ReviewParser(BaseParser):
@@ -752,7 +822,7 @@ class FileParser(BaseParser):
             self.parse_file_contributors(file.get("fileContributors"))
             self.parse_file_attribution_text(file.get("attributionTexts"))
             self.parse_file_dependencies(file.get("fileDependencies"))
-            self.parse_annotations(file.get("annotations"))
+            self.parse_annotations(file.get("annotations"), spdx_id=file.get("SPDXID"))
             self.parse_file_chksum(file.get("sha1"))
         else:
             self.value_error("FILE", file)
@@ -812,8 +882,6 @@ class FileParser(BaseParser):
                 return self.builder.set_file_type(self.document, file_type)
             except SPDXValueError:
                 self.value_error("FILE_TYPE", file_type)
-            except CardinalityError:
-                self.more_than_one_error("FILE_TYPE")
             except OrderError:
                 self.order_error("FILE_TYPE", "FILE_NAME")
         else:
@@ -1040,6 +1108,16 @@ class FileParser(BaseParser):
         else:
             self.value_error("FILE_CHECKSUM", file_chksum)
 
+    def parse_files(self, files: List[Dict]) -> None:
+        if files is None:
+            return
+        if isinstance(files, list):
+            for file in files:
+                self.parse_file(file)
+        else:
+            self.value_error("FILES", files)
+
+
 
 class PackageParser(BaseParser):
     def __init__(self, builder, logger):
@@ -1050,7 +1128,7 @@ class PackageParser(BaseParser):
         # current package being parsed is the last one
         return self.document.packages[-1]
 
-    def parse_package(self, package):
+    def parse_package(self, package: Package, method_to_parse_relationship: Callable):
         """
         Parse Package Information fields
         - package: Python dict with Package Information fields in it
@@ -1077,9 +1155,9 @@ class PackageParser(BaseParser):
             self.parse_pkg_summary(package.get("summary"))
             self.parse_pkg_comment(package.get("comment"))
             self.parse_pkg_description(package.get("description"))
-            self.parse_annotations(package.get("annotations"))
+            self.parse_annotations(package.get("annotations"), spdx_id=package.get("SPDXID"))
             self.parse_pkg_attribution_text(package.get("attributionTexts"))
-            self.parse_pkg_files(package.get("files"))
+            self.parse_pkg_files(package.get("hasFiles"), method_to_parse_relationship)
             self.parse_pkg_chksum(package.get("sha1"))
             self.parse_package_external_refs(package.get("externalRefs"))
             self.parse_primary_package_purpose(package.get("primaryPackagePurpose"))
@@ -1381,7 +1459,7 @@ class PackageParser(BaseParser):
             for pkg_attribution_text in pkg_attribution_texts:
                 try:
                     return self.builder.set_pkg_attribution_text(
-                        self.document, pkg_attribution_texts
+                        self.document, pkg_attribution_text
                     )
                 except CardinalityError:
                     self.more_than_one_error("PKG_ATTRIBUTION_TEXT")
@@ -1491,24 +1569,24 @@ class PackageParser(BaseParser):
         elif pkg_description is not None:
             self.value_error("PKG_DESCRIPTION", pkg_description)
 
-    def parse_pkg_files(self, pkg_files):
+    def parse_pkg_files(self, pkg_has_files: List[str], method_to_parse_relationship: Callable) -> None:
         """
         Parse Package files
-        - pkg_files: Python list of dicts as in FileParser.parse_file
+        - pkg_has_files: Python list of spdx_ids
         """
         if not self.package.are_files_analyzed:
-            if pkg_files is not None:
-                self.value_error("PKG_FILES", pkg_files)
+            if pkg_has_files is not None:
+                self.value_error("PKG_FILES", pkg_has_files)
             return
 
-        if isinstance(pkg_files, list):
-            for pkg_file in pkg_files:
-                if isinstance(pkg_file, dict):
-                    self.parse_file(pkg_file.get("File"))
+        if isinstance(pkg_has_files, list):
+            for pkg_file_spdx_id in pkg_has_files:
+                if isinstance(pkg_file_spdx_id, str):
+                    method_to_parse_relationship(self.package.spdx_id, "CONTAINS", pkg_file_spdx_id)
                 else:
-                    self.value_error("PKG_FILE", pkg_file)
-        elif pkg_files is not None:
-            self.value_error("PKG_FILES", pkg_files)
+                    self.value_error("PKG_FILE", pkg_file_spdx_id)
+        elif pkg_has_files is not None:
+            self.value_error("PKG_HAS_FILES", pkg_has_files)
 
     def parse_pkg_chksum(self, pkg_chksum):
         """
@@ -1543,7 +1621,7 @@ class PackageParser(BaseParser):
     def parse_primary_package_purpose(self, primary_package_purpose: str):
         if primary_package_purpose is None:
             return
-
+        primary_package_purpose = primary_package_purpose.replace("-", "_")  # OPERATING-SYSTEM -> OPERATING_SYSTEM
         if primary_package_purpose not in [purpose.name for purpose in PackagePurpose]:
             self.value_error("PRIMARY_PACKAGE_PURPOSE", primary_package_purpose)
             return
@@ -1570,7 +1648,7 @@ class PackageParser(BaseParser):
             self.package.built_date = parsed_date
         else:
             self.value_error("BUILT_DATE", built_date)
-            
+
     def parse_valid_until_date(self, valid_until_date: str):
         if valid_until_date is None:
             return
@@ -1654,12 +1732,13 @@ class Parser(
         self.parse_extracted_license_info(
             self.document_object.get("hasExtractedLicensingInfos")
         )
-        self.parse_annotations(self.document_object.get("annotations"))
+        self.parse_annotations(self.document_object.get("annotations"), spdx_id=self.document_object.get("SPDXID"))
         self.parse_relationships(self.document_object.get("relationships"))
         self.parse_reviews(self.document_object.get("reviewers"))
         self.parse_snippets(self.document_object.get("snippets"))
 
         self.parse_packages(self.document_object.get("packages"))
+        self.parse_files(self.document_object.get("files"))
 
         if self.document_object.get("documentDescribes"):
             self.parse_doc_described_objects(self.document_object.get("documentDescribes"))
@@ -1783,7 +1862,7 @@ class Parser(
             return
         if isinstance(packages, list):
             for package in packages:
-                self.parse_package(package)
+                self.parse_package(package, self.parse_relationship)
             return True
         else:
             self.value_error("PACKAGES", packages)

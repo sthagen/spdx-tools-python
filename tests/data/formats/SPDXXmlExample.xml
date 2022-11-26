@@ -37,6 +37,10 @@
             <licenseDeclared>(LicenseRef-3 AND LicenseRef-2 AND Apache-2.0 AND MPL-1.1 AND LicenseRef-1 AND LicenseRef-4)</licenseDeclared>
             <downloadLocation>http://www.spdx.org/tools</downloadLocation>
             <description>This utility translates and SPDX RDF XML document to a spreadsheet, translates a spreadsheet to an SPDX RDF XML document and translates an SPDX RDFa document to an SPDX RDF XML document.</description>
+            <primaryPackagePurpose>OPERATING-SYSTEM</primaryPackagePurpose>
+            <builtDate>2020-01-01T12:00:00Z</builtDate>
+            <releaseDate>2021-01-01T12:00:00Z</releaseDate>
+            <validUntilDate>2022-01-01T12:00:00Z</validUntilDate>
         </packages>
 		<creationInfo>
 			<comment>This is an example of an SPDX spreadsheet format</comment>
@@ -58,7 +62,6 @@
 		<annotations>
 			<comment>This is just an example. Some of the non-standard licenses look like they are actually BSD 3 clause licenses</comment>
 			<annotationType>REVIEW</annotationType>
-			<SPDXID>SPDXRef-45</SPDXID>
 			<annotationDate>2012-06-13T00:00:00Z</annotationDate>
 			<annotator>Person: Jim Reviewer</annotator>
 		</annotations>
@@ -205,7 +208,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</extractedText>
                 <checksumValue>2fd4e1c67a2d28fced849ee1bb76e7391b93eb12</checksumValue>
                 <algorithm>checksumAlgorithm_sha1</algorithm>
             </checksums>
-            <fileTypes>fileType_source</fileTypes>
+            <fileTypes>SOURCE</fileTypes>
+            <fileTypes>TEXT</fileTypes>
             <SPDXID>SPDXRef-File2</SPDXID>
         </files>
         <files>
@@ -224,7 +228,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</extractedText>
                 <checksumValue>3ab4e1c67a2d28fced849ee1bb76e7391b93f125</checksumValue>
                 <algorithm>checksumAlgorithm_sha1</algorithm>
             </checksums>
-            <fileTypes>fileType_archive</fileTypes>
+            <fileTypes>ARCHIVE</fileTypes>
+            <fileTypes>OTHER</fileTypes>
             <SPDXID>SPDXRef-File1</SPDXID>
         </files>
 		<snippets>
@@ -232,9 +237,30 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</extractedText>
 			<name>from linux kernel</name>
 			<copyrightText>Copyright 2008-2010 John Smith</copyrightText>
 			<licenseConcluded>Apache-2.0</licenseConcluded>
-			<licenseInfoFromSnippet>Apache-2.0</licenseInfoFromSnippet>
+			<licenseInfoInSnippets>Apache-2.0</licenseInfoInSnippets>
+			<licenseInfoInSnippets>GPL-2.0-only</licenseInfoInSnippets>
 			<licenseComments>The concluded license was taken from package xyz, from which the snippet was copied into the current file. The concluded license information was found in the COPYING.txt file in package xyz.</licenseComments>
 			<SPDXID>SPDXRef-Snippet</SPDXID>
-			<fileId>SPDXRef-DoapSource</fileId>
+			<snippetFromFile>SPDXRef-DoapSource</snippetFromFile>
+            <ranges>
+                <endPointer>
+                    <offset>420</offset>
+                    <reference>SPDXRef-DoapSource</reference>
+                </endPointer>
+                <startPointer>
+                    <offset>310</offset>
+                    <reference>SPDXRef-DoapSource</reference>
+                </startPointer>
+            </ranges>
+            <ranges>
+                <endPointer>
+                    <lineNumber>23</lineNumber>
+                    <reference>SPDXRef-DoapSource</reference>
+                </endPointer>
+                <startPointer>
+                    <lineNumber>5</lineNumber>
+                    <reference>SPDXRef-DoapSource</reference>
+                </startPointer>
+            </ranges>
         </snippets>
 	</Document>

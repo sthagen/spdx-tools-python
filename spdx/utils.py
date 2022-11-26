@@ -10,12 +10,19 @@
 # limitations under the License.
 
 import datetime
+import hashlib
 import re
+from typing import Dict, List, TYPE_CHECKING
 
 from ply import lex
 from ply import yacc
 
-from spdx import document
+from spdx import checksum
+if TYPE_CHECKING:
+    from spdx.file import File
+from spdx.package import Package
+from spdx.relationship import Relationship
+from spdx import license
 
 
 def datetime_iso_format(date):
@@ -29,7 +36,6 @@ def datetime_iso_format(date):
 DATE_ISO_REGEX = re.compile(
     r"(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)Z", re.UNICODE
 )
-
 
 # Groups for retrieving values from DATE_ISO_REGEX matches.
 DATE_ISO_YEAR_GRP = 1
@@ -106,7 +112,6 @@ class SPDXNone(object):
 
 
 class LicenseListLexer(object):
-
     tokens = ["LP", "RP", "AND", "OR", "LICENSE"]
 
     def t_LP(self, t):
@@ -163,7 +168,7 @@ class LicenseListParser(object):
     def p_disjunction_1(self, p):
         """disjunction : disjunction OR conjunction
         """
-        p[0] = document.LicenseDisjunction(p[1], p[3])
+        p[0] = license.LicenseDisjunction(p[1], p[3])
 
     def p_disjunction_2(self, p):
         """disjunction : conjunction
@@ -173,7 +178,7 @@ class LicenseListParser(object):
     def p_conjunction_1(self, p):
         """conjunction : conjunction AND license_atom
         """
-        p[0] = document.LicenseConjunction(p[1], p[3])
+        p[0] = license.LicenseConjunction(p[1], p[3])
 
     def p_conjunction_2(self, p):
         """conjunction : license_atom
@@ -183,7 +188,7 @@ class LicenseListParser(object):
     def p_license_atom_1(self, p):
         """license_atom : LICENSE
         """
-        p[0] = document.License.from_identifier(p[1])
+        p[0] = license.License.from_identifier(p[1])
 
     def p_license_atom_2(self, p):
         """license_atom : LP disjunction RP
@@ -203,3 +208,72 @@ class LicenseListParser(object):
             return self.yacc.parse(data, lexer=self.lex)
         except:
             return None
+
+
+def calc_verif_code(files: List['File']) -> str:
+    hashes = []
+
+    for file_entry in files:
+        if (
+            isinstance(file_entry.chksum, checksum.Algorithm)
+            and file_entry.chksum.identifier == "SHA1"
+        ):
+            sha1 = file_entry.chksum.value
+        else:
+            sha1 = file_entry.calc_chksum()
+        hashes.append(sha1)
+
+    hashes.sort()
+
+    sha1 = hashlib.sha1()
+    sha1.update("".join(hashes).encode("utf-8"))
+    return sha1.hexdigest()
+
+
+def get_files_in_package(package: Package, files: List['File'], relationships: List[Relationship]) -> List['File']:
+    files_in_package = []
+    for file in files:
+        if file.spdx_id in [relationship.related_spdx_element for relationship in relationships
+                            if relationship.relationship_type == "CONTAINS" and relationship.spdx_element_id == package.spdx_id] \
+            or file.spdx_id in [relationship.spdx_element_id for relationship in relationships
+                                if relationship.relationship_type == "CONTAINED_BY" and relationship.related_spdx_element == package.spdx_id]:
+            files_in_package.append(file)
+
+    return files_in_package
+
+
+def update_dict_item_with_new_item(current_state: Dict, key: str, item_to_add: str) -> None:
+    if key not in current_state:
+        current_state[key] = [item_to_add]
+    elif item_to_add not in current_state[key]:
+        current_state[key].append(item_to_add)
+
+
+def calc_verif_code(files: List['File']) -> str:
+    hashes = []
+
+    for file_entry in files:
+        if (
+            isinstance(file_entry.chksum, checksum.Algorithm)
+            and file_entry.chksum.identifier == "SHA1"
+        ):
+            sha1 = file_entry.chksum.value
+        else:
+            sha1 = file_entry.calc_chksum()
+        hashes.append(sha1)
+
+    hashes.sort()
+
+    sha1 = hashlib.sha1()
+    sha1.update("".join(hashes).encode("utf-8"))
+    return sha1.hexdigest()
+
+
+def get_files_in_package(package: Package, files: List['File'], relationships: List[Relationship]) -> List['File']:
+    files_in_package = []
+    for file in files:
+        if file.spdx_id in [relationship.related_spdx_element for relationship in relationships
+                            if relationship.relationship_type == "CONTAINS" and relationship.spdx_element_id == package.spdx_id]:
+            files_in_package.append(file)
+
+    return files_in_package

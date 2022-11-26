@@ -33,7 +33,6 @@ class Parser(jsonyamlxml.Parser):
             "annotations",
             "relationships",
             "snippets",
-            "licenseInfoFromSnippet",
             "reviewers",
             "fileTypes",
             "licenseInfoFromFiles",
@@ -41,13 +40,15 @@ class Parser(jsonyamlxml.Parser):
             "artifactOf",
             "fileContributors",
             "fileDependencies",
-            "excludedFilesNames",
             "files",
             "documentDescribes",
             "packages",
             "checksums",
             "hasFiles",
-            "externalRefs"
+            "externalRefs",
+            "ranges",
+            "licenseInfoInSnippets",
+            "packageVerificationCodeExcludedFiles",
         }
 
     def parse(self, file):

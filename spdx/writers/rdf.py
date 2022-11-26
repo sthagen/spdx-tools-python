@@ -18,16 +18,18 @@ from rdflib import RDFS
 from rdflib import URIRef
 from rdflib.compare import to_isomorphic
 
-from spdx import file
-from spdx import document
 from spdx import config
+from spdx import file
+from spdx import license
 from spdx import utils
 from spdx.package import Package
 from spdx.parsers.loggers import ErrorMessages
 from spdx.relationship import Relationship
+from spdx.utils import get_files_in_package
 from spdx.writers.tagvalue import InvalidDocumentError
 
 import warnings
+
 
 class BaseWriter(object):
     """
@@ -85,7 +87,7 @@ class LicenseWriter(BaseWriter):
 
     def licenses_from_tree_helper(self, current, licenses):
         if isinstance(
-            current, (document.LicenseConjunction, document.LicenseDisjunction)
+            current, (license.LicenseConjunction, license.LicenseDisjunction)
         ):
             self.licenses_from_tree_helper(current.license_1, licenses)
             self.licenses_from_tree_helper(current.license_2, licenses)
@@ -133,7 +135,7 @@ class LicenseWriter(BaseWriter):
         Handle single(no conjunction/disjunction) licenses.
         Return the created node.
         """
-        if isinstance(lic, document.ExtractedLicense):
+        if isinstance(lic, license.ExtractedLicense):
             return self.create_extracted_license(lic)
         if lic.identifier.rstrip("+") in config.LICENSE_MAP:
             return URIRef(lic.url)
@@ -146,7 +148,7 @@ class LicenseWriter(BaseWriter):
             if len(matches) != 0:
                 return self.create_extracted_license(matches[0])
             else:
-                lic = document.ExtractedLicense(lic.identifier)
+                lic = license.ExtractedLicense(lic.identifier)
                 warnings.warn(
                     "Missing extracted license: {0}".format(lic.identifier)
                 )
@@ -203,9 +205,9 @@ class LicenseWriter(BaseWriter):
         Could be a single license (extracted or part of license list.) or
         a conjunction/disjunction of licenses.
         """
-        if isinstance(lic, document.LicenseConjunction):
+        if isinstance(lic, license.LicenseConjunction):
             return self.create_conjunction_node(lic)
-        elif isinstance(lic, document.LicenseDisjunction):
+        elif isinstance(lic, license.LicenseDisjunction):
             return self.create_disjunction_node(lic)
         else:
             return self.create_license_helper(lic)
@@ -256,10 +258,11 @@ class FileWriter(LicenseWriter):
             comment_triple = (file_node, RDFS.comment, Literal(doc_file.comment))
             self.graph.add(comment_triple)
 
-        if doc_file.has_optional_field("type"):
-            ftype = self.spdx_namespace[self.FILE_TYPES[doc_file.type]]
-            ftype_triple = (file_node, self.spdx_namespace.fileType, ftype)
-            self.graph.add(ftype_triple)
+        if doc_file.has_optional_field("file_types"):
+            for f_type in doc_file.file_types:
+                ftype = self.spdx_namespace[file.file_type_to_rdf(f_type)]
+                ftype_triple = (file_node, self.spdx_namespace.fileType, ftype)
+                self.graph.add(ftype_triple)
 
         self.graph.add(
             (
@@ -368,7 +371,6 @@ class FileWriter(LicenseWriter):
 
 
 class SnippetWriter(LicenseWriter):
-
     """
     Write spdx.snippet.Snippet
     """
@@ -446,7 +448,6 @@ class SnippetWriter(LicenseWriter):
 
 
 class ReviewInfoWriter(BaseWriter):
-
     """
     Write spdx.review.Review
     """
@@ -591,7 +592,6 @@ class RelationshipInfoWriter(BaseWriter):
 
 
 class CreationInfoWriter(BaseWriter):
-
     """
     Write class spdx.creationinfo.CreationInfo
     """
@@ -681,7 +681,6 @@ class ExternalDocumentRefWriter(BaseWriter):
 
 
 class PackageWriter(LicenseWriter):
-
     """
     Write spdx.package.Package
     """
@@ -888,7 +887,8 @@ class PackageWriter(LicenseWriter):
         Add hasFile triples to graph.
         Must be called after files have been added.
         """
-        file_nodes = map(self.handle_package_has_file_helper, package.files)
+        files = get_files_in_package(package, self.document.files, self.document.relationships)
+        file_nodes = map(self.handle_package_has_file_helper, files)
         triples = [
             (package_node, self.spdx_namespace.hasFile, node) for node in file_nodes
         ]
@@ -955,9 +955,8 @@ class PackageExternalRefWriter(BaseWriter):
         """
         Return a list of package external references.
         """
-        return map(
-            self.create_package_external_ref_node, self.document.package.pkg_ext_refs
-        )
+        return [self.create_package_external_ref_node(ext_ref) for package in self.document.packages
+                for ext_ref in package.pkg_ext_refs]
 
 
 class Writer(

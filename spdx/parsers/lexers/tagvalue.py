@@ -63,6 +63,10 @@ class Lexer(object):
         "ExternalRef": "PKG_EXT_REF",
         "ExternalRefComment": "PKG_EXT_REF_COMMENT",
         "PackageAttributionText": "PKG_ATTRIBUTION_TEXT",
+        "PrimaryPackagePurpose": "PRIMARY_PACKAGE_PURPOSE",
+        "BuiltDate": "BUILT_DATE",
+        "ReleaseDate": "RELEASE_DATE",
+        "ValidUntilDate": "VALID_UNTIL_DATE",
         # Files
         "FileName": "FILE_NAME",
         "FileType": "FILE_TYPE",
@@ -95,6 +99,8 @@ class Lexer(object):
         "SnippetLicenseConcluded": "SNIPPET_LICS_CONC",
         "LicenseInfoInSnippet": "SNIPPET_LICS_INFO",
         "SnippetAttributionText": "SNIPPET_ATTRIBUTION_TEXT",
+        "SnippetByteRange": "SNIPPET_BYTE_RANGE",
+        "SnippetLineRange": "SNIPPET_LINE_RANGE",
         # Common
         "NOASSERTION": "NO_ASSERT",
         "UNKNOWN": "UN_KNOWN",
@@ -102,7 +108,23 @@ class Lexer(object):
         "SOURCE": "SOURCE",
         "BINARY": "BINARY",
         "ARCHIVE": "ARCHIVE",
+        "APPLICATION": "APPLICATION",
+        "AUDIO": "AUDIO",
+        "IMAGE": "IMAGE",
+        "TEXT": "FILETYPE_TEXT",
+        "VIDEO": "VIDEO",
+        "DOCUMENTATION": "DOCUMENTATION",
+        "SPDX": "SPDX",
         "OTHER": "OTHER",
+        "REVIEW": "REVIEW",
+        "FRAMEWORK": "FRAMEWORK",
+        "LIBRARY": "LIBRARY",
+        "CONTAINER": "CONTAINER",
+        "OPERATING-SYSTEM": "OPERATING_SYSTEM",
+        "DEVICE": "DEVICE",
+        "FIRMWARE": "FIRMWARE",
+        "FILE": "FILE",
+        "INSTALL": "INSTALL"
     }
     states = (("text", "exclusive"),)
 
@@ -114,6 +136,7 @@ class Lexer(object):
         "PERSON_VALUE",
         "DATE",
         "LINE",
+        "RANGE",
         "CHKSUM",
         "DOC_REF_ID",
         "DOC_URI",
@@ -145,6 +168,12 @@ class Lexer(object):
         r":\s*SHA1:\s*[a-f0-9]{40,40}"
         t.value = t.value[1:].strip()
         return t
+
+    def t_RANGE(self, t):
+        r":\s*\d+:\d+"
+        t.value = t.value[1:].strip()
+        return t
+
 
     def t_DOC_REF_ID(self, t):
         r":\s*DocumentRef-([A-Za-z0-9\+\.\-]+)"

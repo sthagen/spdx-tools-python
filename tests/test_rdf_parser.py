@@ -13,6 +13,7 @@
 import io
 import json
 import unittest
+from collections import OrderedDict
 
 from spdx.parsers import rdf
 from spdx.parsers.loggers import StandardLogger
@@ -42,6 +43,6 @@ class TestParser(unittest.TestCase):
                 o.write(data)
 
         with io.open(expected_loc, 'r', encoding='utf-8') as ex:
-            expected = json.load(ex)
+            expected = json.load(ex, object_pairs_hook=OrderedDict)
 
         assert result == expected

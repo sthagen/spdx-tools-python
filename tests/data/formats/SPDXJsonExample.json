@@ -48,7 +48,11 @@
       "versionInfo": "Version 0.9.2",
       "licenseDeclared": "(LicenseRef-4 AND LicenseRef-3 AND Apache-2.0 AND LicenseRef-2 AND MPL-1.1 AND LicenseRef-1)",
       "downloadLocation": "http://www.spdx.org/tools",
-      "description": "This utility translates and SPDX RDF XML document to a spreadsheet, translates a spreadsheet to an SPDX RDF XML document and translates an SPDX RDFa document to an SPDX RDF XML document."
+      "description": "This utility translates and SPDX RDF XML document to a spreadsheet, translates a spreadsheet to an SPDX RDF XML document and translates an SPDX RDFa document to an SPDX RDF XML document.",
+      "primaryPackagePurpose": "OPERATING-SYSTEM",
+      "builtDate": "2020-01-01T12:00:00Z",
+      "releaseDate": "2021-01-01T12:00:00Z",
+      "validUntilDate": "2022-01-01T12:00:00Z"
     }
   ],
   "files": [
@@ -75,7 +79,8 @@
         }
       ],
       "fileTypes": [
-        "fileType_archive"
+        "ARCHIVE",
+        "OTHER"
       ],
       "SPDXID": "SPDXRef-File1"
     },
@@ -93,7 +98,8 @@
         }
       ],
       "fileTypes": [
-        "fileType_source"
+        "SOURCE",
+        "TEXT"
       ],
       "SPDXID": "SPDXRef-File2"
     }
@@ -123,7 +129,6 @@
     {
       "comment": "This is just an example. Some of the non-standard licenses look like they are actually BSD 3 clause licenses",
       "annotationType": "REVIEW",
-      "SPDXID": "SPDXRef-45",
       "annotationDate": "2012-06-13T00:00:00Z",
       "annotator": "Person: Jim Reviewer"
     }
@@ -173,12 +178,35 @@
       "name": "from linux kernel",
       "copyrightText": "Copyright 2008-2010 John Smith",
       "licenseConcluded": "Apache-2.0",
-      "licenseInfoFromSnippet": [
-        "Apache-2.0"
+      "licenseInfoInSnippets": [
+        "Apache-2.0",
+        "GPL-2.0-only"
       ],
       "licenseComments": "The concluded license was taken from package xyz, from which the snippet was copied into the current file. The concluded license information was found in the COPYING.txt file in package xyz.",
       "SPDXID": "SPDXRef-Snippet",
-      "fileId": "SPDXRef-DoapSource"
+      "snippetFromFile": "SPDXRef-DoapSource",
+        "ranges": [
+            {
+                "endPointer": {
+                    "offset": 420,
+                    "reference": "SPDXRef-DoapSource"
+                },
+                "startPointer": {
+                    "offset": 310,
+                    "reference": "SPDXRef-DoapSource"
+                }
+            },
+            {
+                "endPointer": {
+                    "lineNumber": 23,
+                    "reference": "SPDXRef-DoapSource"
+                },
+                "startPointer": {
+                    "lineNumber": 5,
+                    "reference": "SPDXRef-DoapSource"
+                }
+            }
+        ]
     }
   ]
 }

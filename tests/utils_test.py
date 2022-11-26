@@ -18,13 +18,14 @@ import ntpath
 import os
 import posixpath
 import re
+from typing import List
 
 import xmltodict
 import yaml
 
 import spdx
 from spdx import utils
-
+from spdx.relationship import Relationship
 
 test_data_dir = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -106,17 +107,14 @@ def sort_nested(data):
         new_data = {}
         for k, v in data.items():
             if isinstance(v, list):
-                try:
-                    v = sort_nested(v)
-                except TypeError:
-                    pass
+                v = sort_nested(v)
             if isinstance(v, dict):
                 v = sort_nested(v)
             new_data[k] = v
         return new_data
     elif isinstance(data, list):
         new_data = []
-        for v in sorted(data):
+        for v in sorted(data, key=lambda x: json.dumps(x, sort_keys=True)):
             if isinstance(v, list):
                 v = sort_nested(v)
             if isinstance(v, dict):
@@ -267,8 +265,8 @@ class TestParserUtils(object):
     @classmethod
     def license_to_dict(cls, license):
         """
-        Represents spdx.document.License, spdx.document.LicenseConjunction or
-        spdx.document.LicenseDisjunction as a Python dictionary
+        Represents spdx.license.License, spdx.license.LicenseConjunction or
+        spdx.license.LicenseDisjunction as a Python dictionary
         """
         CONJ_SEP = re.compile(' AND | and ')
         DISJ_SEP = re.compile(' OR | or ')
@@ -276,10 +274,10 @@ class TestParserUtils(object):
             return None
         license_dict = OrderedDict()
 
-        if isinstance(license, spdx.document.LicenseConjunction):
+        if isinstance(license, spdx.license.LicenseConjunction):
             license_dict['type'] = 'Conjunction'
             sep_regex = CONJ_SEP
-        elif isinstance(license, spdx.document.LicenseDisjunction):
+        elif isinstance(license, spdx.license.LicenseDisjunction):
             license_dict['type'] = 'Disjunction'
             sep_regex = DISJ_SEP
         else:
@@ -344,7 +342,7 @@ class TestParserUtils(object):
         lics_from_files = []
         if package.are_files_analyzed:
             lics_from_files = sorted(package.licenses_from_files, key=lambda lic: lic.identifier)
-        return OrderedDict([
+        package_dict = OrderedDict([
             ('id', package.spdx_id),
             ('name', package.name),
             ('packageFileName', package.file_name),
@@ -361,13 +359,27 @@ class TestParserUtils(object):
             ('copyrightText', package.cr_text),
             ('licenseComment', package.license_comment),
             ('checksum', cls.checksum_to_dict(package.checksum)),
-            ('files', cls.files_to_list(sorted(package.files))),
             ('licenseInfoFromFiles', [cls.license_to_dict(lic) for lic in lics_from_files]),
             ('verificationCode', OrderedDict([
                 ('value', package.verif_code),
                 ('excludedFilesNames', sorted(package.verif_exc_files))])
             )
         ])
+
+        if package.built_date:
+            package_dict['builtDate'] = utils.datetime_iso_format(package.built_date)
+            
+        if package.release_date:
+            package_dict['releaseDate'] = utils.datetime_iso_format(package.release_date)
+            
+        if package.valid_until_date:
+            package_dict['validUntilDate'] = utils.datetime_iso_format(package.valid_until_date)
+
+        if package.primary_package_purpose:
+            package_dict['primaryPackagePurpose'] = package.primary_package_purpose.name.replace("_", "-")
+
+        return package_dict
+
 
     @classmethod
     def files_to_list(cls, files):
@@ -382,7 +394,7 @@ class TestParserUtils(object):
             file_dict = OrderedDict([
                 ('id', file.spdx_id),
                 ('fileName', file.name),
-                ('type', file.type),
+                ('fileTypes', [file_type.name for file_type in file.file_types]),
                 ('comment', file.comment),
                 ('licenseConcluded', cls.license_to_dict(file.conc_lics)),
                 ('copyrightText', file.copyright),
@@ -488,13 +500,26 @@ class TestParserUtils(object):
                 ('comment', snippet.comment),
                 ('copyrightText', snippet.copyright),
                 ('licenseComments', snippet.license_comment),
-                ('fileId', snippet.snip_from_file_spdxid),
+                ('snippetFromFile', snippet.snip_from_file_spdxid),
                 ('licenseConcluded', cls.license_to_dict(snippet.conc_lics)),
-                ('licenseInfoFromSnippet', [cls.license_to_dict(lic) for lic in lics_from_snippet]),
+                ('licenseInfoInSnippets', [cls.license_to_dict(lic) for lic in lics_from_snippet]),
             ])
             snippets_list.append(snippet_dict)
 
         return snippets_list
+
+    @classmethod
+    def relationships_to_dict_list(cls, relationships: List[Relationship]) -> List[OrderedDict]:
+        relationships_list = []
+        for relationship in relationships:
+            relationship_dict = OrderedDict([
+                                                ('spdx_element_id', relationship.spdx_element_id),
+                                                ('relationship_type', relationship.relationship_type),
+                                                ('related_spdx_element', relationship.related_spdx_element)
+                                            ])
+            relationships_list.append(relationship_dict)
+
+        return relationships_list
 
     @classmethod
     def to_dict(cls, doc):
@@ -513,10 +538,12 @@ class TestParserUtils(object):
             ('creators', [cls.entity_to_dict(creator) for creator in creators]),
             ('created', utils.datetime_iso_format(doc.creation_info.created)),
             ('creatorComment', doc.creation_info.comment),
+            ('files', cls.files_to_list(sorted(doc.files))),
             ('packages', [cls.package_to_dict(p) for p in doc.packages]),
             ('externalDocumentRefs', cls.ext_document_references_to_list(sorted(doc.ext_document_references))),
             ('extractedLicenses', cls.extracted_licenses_to_list(sorted(doc.extracted_licenses))),
             ('annotations', cls.annotations_to_list(sorted(doc.annotations))),
             ('reviews', cls.reviews_to_list(sorted(doc.reviews))),
             ('snippets', cls.snippets_to_list(sorted(doc.snippet))),
+            ('relationships', cls.relationships_to_dict_list(doc.relationships))
         ])

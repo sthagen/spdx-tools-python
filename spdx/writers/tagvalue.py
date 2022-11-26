@@ -10,10 +10,16 @@
 # limitations under the License.
 
 from itertools import zip_longest
+from typing import List, TextIO, Tuple, Dict
 
-from spdx import document
+from spdx import license, utils
 from spdx import file as spdx_file
+from spdx.document import Document
+from spdx.file import File
+from spdx.package import Package
 from spdx.parsers.loggers import ErrorMessages
+from spdx.relationship import Relationship
+from spdx.snippet import Snippet
 
 
 class InvalidDocumentError(Exception):
@@ -23,8 +29,11 @@ class InvalidDocumentError(Exception):
 
     pass
 
+
 def write_separator(out):
     out.write("\n")
+
+
 def write_separators(out):
     out.write("\n" * 2)
 
@@ -40,9 +49,15 @@ def write_value(tag, value, out):
     out.write("{0}: {1}\n".format(tag, value))
 
 
+def write_range(tag, value, out):
+    out.write("{0}: {1}:{2}\n".format(tag, value[0], value[1]))
+
+
 def write_text_value(tag, value, out):
-    value = "{0}: <text>{1}</text>\n".format(tag, value)
-    out.write(value)
+    if "\n" in value:
+        out.write("{0}: <text>{1}</text>\n".format(tag, value))
+    else:
+        write_value(tag, value, out)
 
 
 def write_creation_info(creation_info, out):
@@ -96,13 +111,7 @@ def write_relationship(relationship_term, out):
 
 
 def write_file_type(ftype, out):
-    VALUES = {
-        spdx_file.FileType.SOURCE: "SOURCE",
-        spdx_file.FileType.OTHER: "OTHER",
-        spdx_file.FileType.BINARY: "BINARY",
-        spdx_file.FileType.ARCHIVE: "ARCHIVE",
-    }
-    write_value("FileType", VALUES[ftype], out)
+    write_value("FileType", ftype, out)
 
 
 def write_file(spdx_file, out):
@@ -113,24 +122,26 @@ def write_file(spdx_file, out):
     write_value("FileName", spdx_file.name, out)
     if spdx_file.spdx_id:
         write_value("SPDXID", spdx_file.spdx_id, out)
-    if spdx_file.has_optional_field("type"):
-        write_file_type(spdx_file.type, out)
+    for file_type in spdx_file.file_types:
+        write_file_type(file_type.name, out)
     write_value("FileChecksum", spdx_file.chksum.to_tv(), out)
-    if isinstance(
-        spdx_file.conc_lics, (document.LicenseConjunction, document.LicenseDisjunction)
-    ):
-        write_value("LicenseConcluded", "({0})".format(spdx_file.conc_lics), out)
-    else:
-        write_value("LicenseConcluded", spdx_file.conc_lics, out)
+    if spdx_file.has_optional_field("conc_lics"):
+        if isinstance(
+            spdx_file.conc_lics, (license.LicenseConjunction, license.LicenseDisjunction)
+        ):
+            write_value("LicenseConcluded", "({0})".format(spdx_file.conc_lics), out)
+        else:
+            write_value("LicenseConcluded", spdx_file.conc_lics, out)
 
     # write sorted list
     for lics in sorted(spdx_file.licenses_in_file):
         write_value("LicenseInfoInFile", lics, out)
 
-    if isinstance(spdx_file.copyright, str):
-        write_text_value("FileCopyrightText", spdx_file.copyright, out)
-    else:
-        write_value("FileCopyrightText", spdx_file.copyright, out)
+    if spdx_file.has_optional_field("copyright"):
+        if isinstance(spdx_file.copyright, str):
+            write_text_value("FileCopyrightText", spdx_file.copyright, out)
+        else:
+            write_value("FileCopyrightText", spdx_file.copyright, out)
 
     if spdx_file.has_optional_field("license_comment"):
         write_text_value("LicenseComments", spdx_file.license_comment, out)
@@ -169,7 +180,11 @@ def write_snippet(snippet, out):
     out.write("# Snippet\n\n")
     write_value("SnippetSPDXID", snippet.spdx_id, out)
     write_value("SnippetFromFileSPDXID", snippet.snip_from_file_spdxid, out)
-    write_text_value("SnippetCopyrightText", snippet.copyright, out)
+    if snippet.has_optional_field("copyright"):
+        write_text_value("SnippetCopyrightText", snippet.copyright, out)
+    write_range("SnippetByteRange", snippet.byte_range, out)
+    if snippet.has_optional_field("line_range"):
+        write_range("SnippetLineRange", snippet.line_range, out)
     if snippet.has_optional_field("name"):
         write_value("SnippetName", snippet.name, out)
     if snippet.has_optional_field("comment"):
@@ -178,12 +193,13 @@ def write_snippet(snippet, out):
         write_text_value("SnippetLicenseComments", snippet.license_comment, out)
     if snippet.has_optional_field("attribution_text"):
         write_text_value("SnippetAttributionText", snippet.attribution_text, out)
-    if isinstance(
-        snippet.conc_lics, (document.LicenseConjunction, document.LicenseDisjunction)
-    ):
-        write_value("SnippetLicenseConcluded", "({0})".format(snippet.conc_lics), out)
-    else:
-        write_value("SnippetLicenseConcluded", snippet.conc_lics, out)
+    if snippet.has_optional_field("conc_lics"):
+        if isinstance(
+            snippet.conc_lics, (license.LicenseConjunction, license.LicenseDisjunction)
+        ):
+            write_value("SnippetLicenseConcluded", "({0})".format(snippet.conc_lics), out)
+        else:
+            write_value("SnippetLicenseConcluded", snippet.conc_lics, out)
     # Write sorted list
     for lics in sorted(snippet.licenses_in_snippet):
         write_value("LicenseInfoInSnippet", lics, out)
@@ -235,22 +251,24 @@ def write_package(package, out):
     if package.has_optional_field("comment"):
         write_text_value("PackageComment", package.comment, out)
 
-    if isinstance(
-        package.license_declared,
-        (document.LicenseConjunction, document.LicenseDisjunction),
-    ):
-        write_value(
-            "PackageLicenseDeclared", "({0})".format(package.license_declared), out
-        )
-    else:
-        write_value("PackageLicenseDeclared", package.license_declared, out)
+    if package.has_optional_field("license_declared"):
+        if isinstance(
+            package.license_declared,
+            (license.LicenseConjunction, license.LicenseDisjunction),
+        ):
+            write_value(
+                "PackageLicenseDeclared", "({0})".format(package.license_declared), out
+            )
+        else:
+            write_value("PackageLicenseDeclared", package.license_declared, out)
 
-    if isinstance(
-        package.conc_lics, (document.LicenseConjunction, document.LicenseDisjunction)
-    ):
-        write_value("PackageLicenseConcluded", "({0})".format(package.conc_lics), out)
-    else:
-        write_value("PackageLicenseConcluded", package.conc_lics, out)
+    if package.has_optional_field("conc_lics"):
+        if isinstance(
+            package.conc_lics, (license.LicenseConjunction, license.LicenseDisjunction)
+        ):
+            write_value("PackageLicenseConcluded", "({0})".format(package.conc_lics), out)
+        else:
+            write_value("PackageLicenseConcluded", package.conc_lics, out)
 
     # Write sorted list of licenses.
     for lics in sorted(package.licenses_from_files):
@@ -259,8 +277,7 @@ def write_package(package, out):
     if package.has_optional_field("license_comment"):
         write_text_value("PackageLicenseComments", package.license_comment, out)
 
-    # cr_text is either free form text or NONE or NOASSERTION.
-    if package.cr_text:
+    if package.has_optional_field("cr_text"):
         if isinstance(package.cr_text, str):
             write_text_value("PackageCopyrightText", package.cr_text, out)
         else:
@@ -277,10 +294,17 @@ def write_package(package, out):
         if pkg_ref.comment:
             write_text_value("ExternalRefComment", pkg_ref.comment, out)
 
-    # Write sorted files.
-    for spdx_file in sorted(package.files):
-        write_separators(out)
-        write_file(spdx_file, out)
+    if package.has_optional_field("primary_package_purpose"):
+        write_value("PrimaryPackagePurpose", package.primary_package_purpose.name.replace("_", "-"), out)
+
+    if package.has_optional_field("built_date"):
+        write_value("BuiltDate", utils.datetime_iso_format(package.built_date), out)
+
+    if package.has_optional_field("release_date"):
+        write_value("ReleaseDate", utils.datetime_iso_format(package.release_date), out)
+
+    if package.has_optional_field("valid_until_date"):
+        write_value("ValidUntilDate", utils.datetime_iso_format(package.valid_until_date), out)
 
 
 def write_extracted_licenses(lics, out):
@@ -357,22 +381,46 @@ def write_document(document, out, validate=True):
             write_separator(out)
         write_separator(out)
 
-    # Write relationships
-    if document.relationships:
+    relationships_to_write, contained_files_by_package_id = scan_relationships(document.relationships,
+                                                                               document.packages, document.files)
+    contained_snippets_by_file_id = determine_files_containing_snippets(document.snippet, document.files)
+    packaged_file_ids = [file.spdx_id for files_list in contained_files_by_package_id.values()
+                         for file in files_list]
+    filed_snippet_ids = [snippet.spdx_id for snippets_list in contained_snippets_by_file_id.values()
+                         for snippet in snippets_list]
+
+    # Write Relationships
+    if relationships_to_write:
         out.write("# Relationships\n\n")
-        for relationship in document.relationships:
+        for relationship in relationships_to_write:
             write_relationship(relationship, out)
         write_separators(out)
+
+    # Write snippet info
+    for snippet in document.snippet:
+        if snippet.spdx_id not in filed_snippet_ids:
+            write_snippet(snippet, out)
+            write_separators(out)
+
+    # Write file info
+    for file in document.files:
+        if file.spdx_id not in packaged_file_ids:
+            write_file(file, out)
+            write_separators(out)
+            if file.spdx_id in contained_snippets_by_file_id:
+                write_snippets(contained_snippets_by_file_id[file.spdx_id], out)
 
     # Write out package info
     for package in document.packages:
         write_package(package, out)
         write_separators(out)
-
-    # Write out snippet info
-    for snippet in document.snippet:
-        write_snippet(snippet, out)
-        write_separators(out)
+        if package.spdx_id in contained_files_by_package_id:
+            for file in contained_files_by_package_id[package.spdx_id]:
+                write_file(file, out)
+                write_separators(out)
+                if file.spdx_id in contained_snippets_by_file_id:
+                    write_snippets(contained_snippets_by_file_id[file.spdx_id], out)
+                    break
 
     if document.extracted_licenses:
         out.write("# Extracted Licenses\n\n")
@@ -380,3 +428,45 @@ def write_document(document, out, validate=True):
             write_extracted_licenses(lic, out)
             write_separator(out)
         write_separator(out)
+
+
+def write_snippets(snippets_to_write: List, out: TextIO) -> None:
+    for snippet in snippets_to_write:
+        write_snippet(snippet, out)
+        write_separators(out)
+
+
+def scan_relationships(relationships: List[Relationship], packages: List[Package], files: List[File]) \
+        -> Tuple[List, Dict]:
+    contained_files_by_package_id = dict()
+    relationships_to_write = []
+    files_by_spdx_id = {file.spdx_id: file for file in files}
+    packages_spdx_ids = [package.spdx_id for package in packages]
+    for relationship in relationships:
+        if relationship.relationship_type == "CONTAINS" and \
+            relationship.spdx_element_id in packages_spdx_ids and \
+                relationship.related_spdx_element in files_by_spdx_id.keys():
+            contained_files_by_package_id.setdefault(relationship.spdx_element_id, []).append(
+                files_by_spdx_id[relationship.related_spdx_element])
+            if relationship.has_comment:
+                relationships_to_write.append(relationship)
+        elif relationship.relationship_type == "CONTAINED_BY" and \
+            relationship.related_spdx_element in packages_spdx_ids and \
+                relationship.spdx_element_id in files_by_spdx_id:
+            contained_files_by_package_id.setdefault(relationship.related_spdx_element, []).append(
+                files_by_spdx_id[relationship.spdx_element_id])
+            if relationship.has_comment:
+                relationships_to_write.append(relationship)
+        else:
+            relationships_to_write.append(relationship)
+
+    return relationships_to_write, contained_files_by_package_id
+
+
+def determine_files_containing_snippets(snippets: List[Snippet], files: List[File]) -> Dict:
+    contained_snippets_by_file_id = dict()
+    for snippet in snippets:
+        if snippet.snip_from_file_spdxid in [file.spdx_id for file in files]:
+            contained_snippets_by_file_id.setdefault(snippet.snip_from_file_spdxid, []).append(snippet)
+
+    return contained_snippets_by_file_id

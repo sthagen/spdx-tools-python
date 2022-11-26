@@ -8,8 +8,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Tuple, Optional
 
-from spdx import document
+from spdx import license
 from spdx import utils
 
 
@@ -29,16 +30,20 @@ class Snippet(object):
      which this snippet is associated with. Mandatory, one. Type: str.
      - conc_lics: Contains the license the SPDX file creator has concluded as
      governing the snippet or alternative values if the governing license
-     cannot be determined. Mandatory one. Type: document.License or
+     cannot be determined. Mandatory one. Type: license.License or
      utils.NoAssert or utils.SPDXNone.
      - licenses_in_snippet: The list of licenses found in the snippet.
-     Mandatory, one or more. Type: document.License or utils.SPDXNone or
+     Mandatory, one or more. Type: license.License or utils.SPDXNone or
      utils.NoAssert.
      - attribution_text: optional string.
+     - byte_range: Defines the byte range in the original host file that the
+     snippet information applies to. Mandatory, one. Type (int, int)
+     - line_range: Defines the line range in the original host file that the
+     snippet information applies to. Optional, one. Type (int, int)
     """
 
     def __init__(
-        self, spdx_id=None, copyright=None, snip_from_file_spdxid=None, conc_lics=None
+        self, spdx_id=None, copyright=None, snip_from_file_spdxid=None, conc_lics=None, byte_range=None
     ):
         self.spdx_id = spdx_id
         self.name = None
@@ -49,6 +54,8 @@ class Snippet(object):
         self.snip_from_file_spdxid = snip_from_file_spdxid
         self.conc_lics = conc_lics
         self.licenses_in_snippet = []
+        self.byte_range: Optional[Tuple[int, int]] = byte_range
+        self.line_range: Optional[Tuple[int, int]] = None
 
     def add_lics(self, lics):
         self.licenses_in_snippet.append(lics)
@@ -76,7 +83,7 @@ class Snippet(object):
             (str, utils.NoAssert, utils.SPDXNone),
         ):
             messages.append(
-                "Snippet copyright must be str or unicode or utils.NoAssert or utils.SPDXNone"
+                "Snippet copyright must be str or unicode or spdx.utils.NoAssert or spdx.utils.SPDXNone"
             )
 
     def validate_snip_from_file_spdxid(self, messages):
@@ -85,24 +92,24 @@ class Snippet(object):
 
     def validate_concluded_license(self, messages):
         if self.conc_lics and not isinstance(
-            self.conc_lics, (utils.SPDXNone, utils.NoAssert, document.License)
+            self.conc_lics, (utils.SPDXNone, utils.NoAssert, license.License)
         ):
             messages.append(
                 "Snippet concluded license must be instance of "
                 "spdx.utils.SPDXNone or spdx.utils.NoAssert or "
-                "spdx.document.License"
+                "spdx.license.License"
             )
 
     def validate_licenses_in_snippet(self, messages):
         for lic in self.licenses_in_snippet:
             if not isinstance(
-                lic, (document.License, utils.NoAssert, utils.SPDXNone)
+                lic, (license.License, utils.NoAssert, utils.SPDXNone)
             ):
                 messages.append(
                     "License in snippet must be instance of "
                     "spdx.utils.SPDXNone or spdx.utils.NoAssert or "
-                    "spdx.document.License"
+                    "spdx.license.License"
                 )
 
     def has_optional_field(self, field):
-        return bool (getattr(self, field, None))
+        return bool(getattr(self, field, None))

@@ -12,6 +12,7 @@
 import os
 import shutil
 import tempfile
+import unittest
 from datetime import datetime
 from unittest import TestCase
 
@@ -19,11 +20,11 @@ from spdx.checksum import Algorithm
 from spdx.config import LICENSE_MAP, EXCEPTION_MAP
 from spdx.creationinfo import Tool
 from spdx.document import Document, ExternalDocumentRef
-from spdx.document import License
-from spdx.file import File
+from spdx.license import License
+from spdx.file import File, FileType
 from spdx.package import Package, PackagePurpose
 from spdx.parsers.loggers import ErrorMessages
-from spdx.relationship import Relationship
+from spdx.relationship import Relationship, RelationshipType
 from spdx.utils import NoAssert
 from spdx.version import Version
 
@@ -105,7 +106,7 @@ class TestDocument(TestCase):
 
         package = doc.package = Package(name='some/path', download_location=NoAssert())
         package.spdx_id = 'SPDXRef-Package'
-        package.cr_text = 'Some copyrught'
+        package.cr_text = 'Some copyright'
         package.verif_code = 'SOME code'
         package.license_declared = NoAssert()
         package.conc_lics = NoAssert()
@@ -113,6 +114,7 @@ class TestDocument(TestCase):
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
+        file1.file_types = [FileType.OTHER]
         file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
@@ -121,7 +123,9 @@ class TestDocument(TestCase):
         file1.add_lics(lic1)
 
         package.add_lics_from_file(lic1)
-        package.add_file(file1)
+        doc.add_file(file1)
+        relationship = create_relationship(package.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
+        doc.add_relationships(relationship)
         messages = ErrorMessages()
         messages = doc.validate(messages)
         assert not messages
@@ -135,7 +139,7 @@ class TestDocument(TestCase):
 
         package1 = Package(name='some/path1', download_location=NoAssert())
         package1.spdx_id = 'SPDXRef-Package1'
-        package1.cr_text = 'Some copyrught'
+        package1.cr_text = 'Some copyright'
         package1.files_verified = False
         package1.license_declared = NoAssert()
         package1.conc_lics = NoAssert()
@@ -143,7 +147,7 @@ class TestDocument(TestCase):
 
         package2 = Package(name='some/path2', download_location=NoAssert())
         package2.spdx_id = 'SPDXRef-Package2'
-        package2.cr_text = 'Some copyrught'
+        package2.cr_text = 'Some copyright'
         package2.files_verified = False
         package2.license_declared = NoAssert()
         package2.conc_lics = NoAssert()
@@ -151,6 +155,15 @@ class TestDocument(TestCase):
 
         assert len(doc.packages) == 2
 
+    def test_document_without_packages(self):
+        doc = Document(Version(2, 1), License.from_identifier("CC0-1.0"),
+                       'Sample_Document_V2.1', spdx_id='SPDXRef-DOCUMENT',
+                       namespace='https://spdx.org/spdxdocs/spdx-example-444504E0-4F89-41D3-9A0C-0305E82C3301')
+        doc.creation_info.add_creator(Tool('ScanCode'))
+        doc.creation_info.set_created_now()
+
+        messages = doc.validate()
+        assert len(messages.messages) == 0
 
 class TestWriters(TestCase):
     maxDiff = None
@@ -164,7 +177,7 @@ class TestWriters(TestCase):
 
         package = doc.package = Package(name='some/path', download_location=NoAssert())
         package.spdx_id = 'SPDXRef-Package'
-        package.cr_text = 'Some copyrught'
+        package.cr_text = 'Some copyright'
         package.verif_code = 'SOME code'
         package.checksum = Algorithm('SHA1', 'SOME-SHA1')
         package.license_declared = NoAssert()
@@ -181,17 +194,20 @@ class TestWriters(TestCase):
         file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
+        file1.file_types = [FileType.OTHER, FileType.SOURCE]
 
         lic1 = License.from_identifier('LGPL-2.1-only')
         if or_later:
             lic1 = License.from_identifier('LGPL-2.1-or-later')
 
         file1.add_lics(lic1)
+        doc.add_file(file1)
 
         package.add_lics_from_file(lic1)
-        package.add_file(file1)
-        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package.spdx_id
-        doc.add_relationships(Relationship(relationship))
+        relationship = create_relationship(package.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
+        doc.add_relationships(relationship)
+        relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package.spdx_id)
+        doc.add_relationships(relationship)
         return doc
 
     def _get_lgpl_multi_package_doc(self, or_later=False):
@@ -240,19 +256,22 @@ class TestWriters(TestCase):
         file1.add_lics(lic1)
 
         package2.add_lics_from_file(lic1)
-        package2.add_file(file1)
         package3.add_lics_from_file(lic1)
-        package3.add_file(file1)
 
         doc.add_package(package2)
         doc.add_package(package3)
+        doc.add_file(file1)
 
-        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package1.spdx_id
-        doc.add_relationships(Relationship(relationship))
-        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package2.spdx_id
-        doc.add_relationships(Relationship(relationship))
-        relationship = doc.spdx_id + " " + "DESCRIBES" + " " + package3.spdx_id
-        doc.add_relationships(Relationship(relationship))
+        relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package1.spdx_id)
+        doc.add_relationships(relationship)
+        relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package2.spdx_id)
+        doc.add_relationships(relationship)
+        relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package3.spdx_id)
+        doc.add_relationships(relationship)
+        relationship = create_relationship(package2.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
+        doc.add_relationships(relationship)
+        relationship = create_relationship(package3.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
+        doc.add_relationships(relationship)
 
         return doc
 
@@ -388,7 +407,6 @@ class TestWriters(TestCase):
         try:
             temp_dir = tempfile.mkdtemp(prefix='test_spdx')
             result_file = os.path.join(temp_dir, 'spdx-simple-multi-package.json')
-            result_file = 'spdx-simple-multi-package.json'
             with open(result_file, 'w') as output:
                 write_document(doc, output, validate=True)
 
@@ -524,12 +542,8 @@ class TestWriters(TestCase):
 
     def _get_mini_doc(self,):
         doc = Document(Version(2, 1), License.from_identifier('CC0-1.0'))
-        doc.creation_info.add_creator(Tool('ScanCode'))
         doc.creation_info.set_created_now()
 
-        package = doc.package = Package(download_location=NoAssert())
-        package.license_declared = NoAssert()
-        package.conc_lics = NoAssert()
         return doc
 
     def test_write_document_tv_mini(self):
@@ -562,6 +576,10 @@ class TestWriters(TestCase):
         finally:
             if temp_dir and os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
+
+
+def create_relationship(spdx_element_id: str, relationship_type: RelationshipType, related_spdx_element: str) -> Relationship:
+    return Relationship(spdx_element_id + " " + relationship_type.name + " " + related_spdx_element)
 
 
 class TestLicense(TestCase):

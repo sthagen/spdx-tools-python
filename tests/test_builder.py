@@ -13,7 +13,8 @@ from unittest import TestCase
 
 import tests.testing_utils as testing_utils
 
-from spdx.document import Document, License
+from spdx.document import Document
+from spdx.license import License
 import spdx.parsers.tagvaluebuilders as builders
 from spdx.version import Version
 
@@ -99,7 +100,7 @@ class TestDocumentBuilder(TestCase):
 
     @testing_utils.raises(builders.SPDXValueError)
     def test_comment_value(self):
-        comment = "<text>slslss<text"
+        comment = "<text>sls\nlss<text"
         self.builder.set_doc_comment(self.document, comment)
 
 
@@ -315,7 +316,7 @@ class TestReviewBuilder(TestCase):
 
     @testing_utils.raises(builders.SPDXValueError)
     def test_comment_value(self):
-        comment = "<text>Comment<text>"
+        comment = "<text>Multiline \nComment<text>"
         self.add_reviewer()
         self.builder.add_review_comment(self.document, comment)
 
@@ -396,7 +397,7 @@ class TestAnnotationBuilder(TestCase):
 
     @testing_utils.raises(builders.SPDXValueError)
     def test_annotation_comment_value(self):
-        comment = "<text>Annotation Comment<text>"
+        comment = "<text>Annotation Comment\nthat spans multiple lines<text>"
         self.add_annotator()
         self.builder.add_annotation_comment(self.document, comment)
 
@@ -451,7 +452,8 @@ class TestRelationshipBuilder(TestCase):
 
     @testing_utils.raises(builders.SPDXValueError)
     def test_relationship_comment_value(self):
-        comment = "<text>Relationship Comment<text>"
+        comment = "<text>Relationship \n" \
+                  "Comment<text>"
         self.add_relationship()
         self.builder.add_relationship_comment(self.document, comment)
 
@@ -547,7 +549,7 @@ class TestPackageBuilder(TestCase):
     @testing_utils.raises(builders.SPDXValueError)
     def test_incorrect_pkg_attribution_text(self):
         self.builder.create_package(self.document, "pkg")
-        self.builder.set_pkg_attribution_text(self.document, "not_free_form_text")
+        self.builder.set_pkg_attribution_text(self.document, "<tex> text over multiple lines\n with wrong tag </text>")
 
     @testing_utils.raises(builders.OrderError)
     def test_pkg_cr_text_order(self):
@@ -580,7 +582,7 @@ class TestPackageBuilder(TestCase):
     @testing_utils.raises(builders.SPDXValueError)
     def test_incorrect_pkg_comment(self):
         self.builder.create_package(self.document, "pkg")
-        self.builder.set_pkg_comment(self.document, "not_free_form_text")
+        self.builder.set_pkg_comment(self.document, "<text>text in multiple lines\n with wrong tag <text>")
 
     def test_correct_pkg_spdx_id(self):
         self.builder.create_package(self.document, "pkg")
@@ -692,7 +694,7 @@ class TestSnippetBuilder(TestCase):
     @testing_utils.raises(builders.SPDXValueError)
     def test_snippet_comment_text_value(self):
         self.builder.create_snippet(self.document, "SPDXRef-Snippet")
-        self.builder.set_snippet_comment(self.document, "Comment.")
+        self.builder.set_snippet_comment(self.document, "Comment over multiple lines\n without enclosing tags.")
 
     @testing_utils.raises(builders.OrderError)
     def test_snippet_attribution_text_order(self):
@@ -707,7 +709,8 @@ class TestSnippetBuilder(TestCase):
     @testing_utils.raises(builders.SPDXValueError)
     def test_incorrect_snippet_attribution_text(self):
         self.builder.create_snippet(self.document, "SPDXRef-Package")
-        self.builder.set_snippet_attribution_text(self.document, "not_free_form_text")
+        self.builder.set_snippet_attribution_text(self.document, "Attribution text over multiple lines"
+                                                                 "\n without enclosing tags.")
 
     def test_snippet_copyright(self):
         self.builder.create_snippet(self.document, "SPDXRef-Snippet")
@@ -719,7 +722,7 @@ class TestSnippetBuilder(TestCase):
     def test_snippet_copyright_text_value(self):
         self.builder.create_snippet(self.document, "SPDXRef-Snippet")
         self.builder.set_snippet_copyright(
-            self.document, "Copyright 2008-2010 John Smith"
+            self.document, "Copyright 2008-2010 John Smith\n over multiple lines without enclosing tags."
         )
 
     @testing_utils.raises(builders.OrderError)
@@ -735,7 +738,7 @@ class TestSnippetBuilder(TestCase):
     @testing_utils.raises(builders.SPDXValueError)
     def test_snippet_lic_comment_text_value(self):
         self.builder.create_snippet(self.document, "SPDXRef-Snippet")
-        self.builder.set_snippet_lic_comment(self.document, "Lic comment")
+        self.builder.set_snippet_lic_comment(self.document, "Lic comment over multiple lines\n without tags")
 
     @testing_utils.raises(builders.OrderError)
     def test_snippet_lic_comment_order(self):
@@ -806,3 +809,29 @@ class TestSnippetBuilder(TestCase):
         self.builder.set_snippet_lics_info(
             self.document, License.from_identifier("Apache-2.0")
         )
+
+    def test_snippet_byte_range(self):
+        self.builder.create_snippet(self.document, "SPDXRef-Snippet")
+        self.builder.set_snippet_byte_range(self.document, "310:420")
+
+    @testing_utils.raises(builders.OrderError)
+    def test_snippet_byte_range_order(self):
+        self.builder.set_snippet_byte_range(self.document, "310:420")
+
+    @testing_utils.raises(builders.SPDXValueError)
+    def test_snippet_byte_range_value(self):
+        self.builder.create_snippet(self.document, "SPDXRef-Snippet")
+        self.builder.set_snippet_byte_range(self.document, "310:30")
+
+    def test_snippet_line_range(self):
+        self.builder.create_snippet(self.document, "SPDXRef-Snippet")
+        self.builder.set_snippet_line_range(self.document, "5:23")
+
+    @testing_utils.raises(builders.OrderError)
+    def test_snippet_line_range_order(self):
+        self.builder.set_snippet_line_range(self.document, "5:23")
+
+    @testing_utils.raises(builders.SPDXValueError)
+    def test_snippet_line_range_value(self):
+        self.builder.create_snippet(self.document, "SPDXRef-Snippet")
+        self.builder.set_snippet_line_range(self.document, "23:5")

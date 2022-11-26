@@ -9,15 +9,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 from datetime import datetime
 from enum import Enum
 from functools import reduce
-from typing import List, Optional
+from typing import Optional
 
 from spdx import checksum
 from spdx import creationinfo
-from spdx import document
+from spdx import license
 from spdx import utils
 from spdx.parsers.loggers import ErrorMessages
 
@@ -62,19 +61,18 @@ class Package(object):
      we allow this to be Optional even when files_analyzed is True/None.
      - check_sum: Optional , spdx.checksum.Algorithm.
      - source_info: Optional string.
-     - conc_lics: Mandatory spdx.document.License or spdx.utils.SPDXNone or
-     - spdx.utils.NoAssert.
-     - license_declared: Mandatory spdx.document.License or spdx.utils.SPDXNone or
-     spdx.utils.NoAssert.
+     - conc_lics: Mandatory license.License or utils.SPDXNone or
+     utils.NoAssert.
+     - license_declared: Mandatory license.License or utils.SPDXNone or
+     utils.NoAssert.
      - license_comment: optional string.
-     - licenses_from_files: list of spdx.document.License or spdx.utils.SPDXNone or
-     - spdx.utils.NoAssert.
+     - licenses_from_files: list of license.License or utils.SPDXNone or
+     utils.NoAssert.
      - cr_text: Copyright text, string , utils.NoAssert or utils.SPDXNone. Mandatory.
      - summary: Optional str.
      - description: Optional str.
      - comment: Comments about the package being described, optional one.
      Type: str
-     - files: List of files in package, at least one.
      - verif_exc_files: list of file names excluded from verification code or None.
      - ext_pkg_refs: External references referenced within the given package.
      Optional, one or many. Type: ExternalPackageRef
@@ -113,7 +111,6 @@ class Package(object):
         self.description = None
         self.comment = None
         self.attribution_text = None
-        self.files = []
         self.verif_exc_files = []
         self.pkg_ext_refs = []
         self.primary_package_purpose: Optional[PackagePurpose] = None
@@ -140,9 +137,6 @@ class Package(object):
     def checksum(self, value):
         self.checksums[0] = value
 
-    def add_file(self, fil):
-        self.files.append(fil)
-
     def add_lics_from_file(self, lics):
         self.licenses_from_files.append(lics)
 
@@ -162,7 +156,6 @@ class Package(object):
         self.validate_checksum(messages)
         self.validate_optional_str_fields(messages)
         self.validate_mandatory_str_fields(messages)
-        self.validate_files(messages)
         self.validate_pkg_ext_refs(messages)
         self.validate_optional_fields(messages)
         messages.pop_context()
@@ -204,31 +197,31 @@ class Package(object):
             )
 
         if self.conc_lics and not isinstance(
-            self.conc_lics, (utils.SPDXNone, utils.NoAssert, document.License)
+            self.conc_lics, (utils.SPDXNone, utils.NoAssert, license.License)
         ):
             messages.append(
                 "Package concluded license must be instance of "
                 "spdx.utils.SPDXNone or spdx.utils.NoAssert or "
-                "spdx.document.License"
+                "spdx.license.License"
             )
 
         if self.license_declared and not isinstance(
-            self.license_declared, (utils.SPDXNone, utils.NoAssert, document.License)
+            self.license_declared, (utils.SPDXNone, utils.NoAssert, license.License)
         ):
             messages.append(
                 "Package declared license must be instance of "
                 "spdx.utils.SPDXNone or spdx.utils.NoAssert or "
-                "spdx.document.License"
+                "spdx.license.License"
             )
 
         license_from_file_check = lambda prev, el: prev and isinstance(
-            el, (document.License, utils.SPDXNone, utils.NoAssert)
+            el, (license.License, utils.SPDXNone, utils.NoAssert)
         )
         if not reduce(license_from_file_check, self.licenses_from_files, True):
             messages.append(
                 "Each element in licenses_from_files must be instance of "
                 "spdx.utils.SPDXNone or spdx.utils.NoAssert or "
-                "spdx.document.License"
+                "spdx.license.License"
             )
 
         return messages
@@ -242,13 +235,6 @@ class Package(object):
                     "External package references must be of the type "
                     "spdx.package.ExternalPackageRef and not " + str(type(ref))
                 )
-
-        return messages
-
-    def validate_files(self, messages):
-        if self.are_files_analyzed:
-            for file in self.files:
-                messages = file.validate(messages)
 
         return messages
 
@@ -310,25 +296,6 @@ class Package(object):
                 )
 
         return messages
-
-    def calc_verif_code(self):
-        hashes = []
-
-        for file_entry in self.files:
-            if (
-                isinstance(file_entry.chksum, checksum.Algorithm)
-                and file_entry.chksum.identifier == "SHA1"
-            ):
-                sha1 = file_entry.chksum.value
-            else:
-                sha1 = file_entry.calc_chksum()
-            hashes.append(sha1)
-
-        hashes.sort()
-
-        sha1 = hashlib.sha1()
-        sha1.update("".join(hashes).encode("utf-8"))
-        return sha1.hexdigest()
 
     def has_optional_field(self, field):
         return bool(getattr(self, field, None))

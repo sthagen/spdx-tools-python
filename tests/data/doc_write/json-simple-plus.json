@@ -19,7 +19,7 @@
             "SPDXID": "SPDXRef-Package",
             "name": "some/path",
             "downloadLocation": "NOASSERTION",
-            "copyrightText": "Some copyrught",
+            "copyrightText": "Some copyright",
             "packageVerificationCode": {
                 "packageVerificationCodeValue": "SOME code"
             },
@@ -57,7 +57,8 @@
             "fileName": "./some/path/tofile",
             "licenseInfoInFiles": [
                 "LGPL-2.1-or-later"
-            ]
+            ],
+            "fileTypes": ["OTHER", "SOURCE"]
         }
     ]
 }

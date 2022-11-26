@@ -10,7 +10,7 @@
         <SPDXID>SPDXRef-Package</SPDXID>
         <name>some/path</name>
         <downloadLocation>NOASSERTION</downloadLocation>
-        <copyrightText>Some copyrught</copyrightText>
+        <copyrightText>Some copyright</copyrightText>
         <packageVerificationCode>
             <packageVerificationCodeValue>SOME code</packageVerificationCodeValue>
         </packageVerificationCode>
@@ -37,5 +37,7 @@
         <licenseConcluded>NOASSERTION</licenseConcluded>
         <copyrightText>NOASSERTION</copyrightText>
         <licenseInfoInFiles>LGPL-2.1-or-later</licenseInfoInFiles>
+        <fileTypes>SOURCE</fileTypes>
+        <fileTypes>OTHER</fileTypes>
     </files>
 </Document>

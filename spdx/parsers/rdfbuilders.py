@@ -11,8 +11,8 @@
 
 import re
 
-from spdx import checksum
-from spdx import document
+from spdx import checksum, file
+from spdx import license
 from spdx import package
 from spdx import version
 from spdx.parsers.builderexceptions import CardinalityError
@@ -60,7 +60,7 @@ class DocBuilder(object):
             res_parts = res.split("/")
             if len(res_parts) != 0:
                 identifier = res_parts[-1]
-                doc.data_license = document.License.from_identifier(identifier)
+                doc.data_license = license.License.from_identifier(identifier)
             else:
                 raise SPDXValueError("Document::License")
         else:
@@ -171,7 +171,6 @@ class CreationInfoBuilder(tagvaluebuilders.CreationInfoBuilder):
         """
         Set creation comment.
         Raise CardinalityError if comment already set.
-        Raise SPDXValueError if not free form text.
         """
         if not self.creation_comment_set:
             self.creation_comment_set = True
@@ -466,6 +465,24 @@ class FileBuilder(tagvaluebuilders.FileBuilder):
                 raise CardinalityError("File::Notice")
         else:
             raise OrderError("File::Notice")
+
+    def set_file_type(self, doc, filetype):
+        """
+        Set the file type for RDF values.
+        """
+        if not self.has_file(doc):
+            raise OrderError("File::FileType")
+
+        split_string = filetype.split('#')
+        if len(split_string) != 2:
+            raise SPDXValueError('Unknown file type {}'.format(filetype))
+        file_type = file.file_type_from_rdf(filetype)
+
+        spdx_file = self.file(doc)
+        if file_type in spdx_file.file_types:
+            raise CardinalityError("File::FileType")
+
+        spdx_file.file_types.append(file_type)
 
 
 class SnippetBuilder(tagvaluebuilders.SnippetBuilder):

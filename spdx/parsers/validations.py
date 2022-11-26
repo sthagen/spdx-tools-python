@@ -12,17 +12,22 @@
 import re
 
 import rdflib
+
 from spdx import creationinfo
+from spdx import license
 from spdx import utils
-from spdx import document
 
 
-def validate_is_free_form_text(value, optional=False):
-    TEXT_RE = re.compile(r"<text>(.|\n)*</text>", re.UNICODE)
+def validate_is_free_form_text_or_str(value, optional=False) -> bool:
     if value is None:
         return optional
-    else:
-        return TEXT_RE.match(value) is not None
+    if not isinstance(value, str):
+        return False
+    if "\n" in value:
+        TEXT_RE = re.compile(r"<text>(.|\n)*</text>", re.UNICODE)
+        match = TEXT_RE.match(value)
+        return match is not None
+    return True
 
 
 def validate_tool_name(value, optional=False):
@@ -79,7 +84,7 @@ def validate_pkg_homepage(value, optional=False):
 def validate_pkg_cr_text(value, optional=False):
     if isinstance(value, (utils.NoAssert, utils.SPDXNone)):
         return True
-    elif validate_is_free_form_text(value, optional):
+    elif validate_is_free_form_text_or_str(value, optional):
         return True
     elif value is None:
         return optional
@@ -88,27 +93,27 @@ def validate_pkg_cr_text(value, optional=False):
 
 
 def validate_pkg_summary(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_pkg_desc(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_pkg_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_pkg_attribution_text(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_file_attribution_text(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_snippet_attribution_text(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_pkg_ext_ref_category(value, optional=False):
@@ -126,11 +131,11 @@ def validate_pkg_ext_ref_type(value, optional=False):
 
 
 def validate_pkg_ext_ref_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_doc_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_doc_spdx_id(value, optional=False):
@@ -163,7 +168,7 @@ def validate_creator(value, optional=False):
 
 
 def validate_creation_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_reviewer(value, optional=False):
@@ -171,7 +176,7 @@ def validate_reviewer(value, optional=False):
 
 
 def validate_review_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_annotator(value, optional=False):
@@ -179,7 +184,7 @@ def validate_annotator(value, optional=False):
 
 
 def validate_annotation_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_annotation_type(value, optional=False):
@@ -191,7 +196,7 @@ def validate_annotation_type(value, optional=False):
 
 
 def validate_relationship_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_pkg_spdx_id(value, optional=False):
@@ -211,11 +216,11 @@ def validate_pkg_files_analyzed(value, optional=False):
 
 
 def validate_pkg_src_info(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_pkg_lics_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_file_spdx_id(value, optional=False):
@@ -228,17 +233,17 @@ def validate_file_spdx_id(value, optional=False):
 
 
 def validate_file_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_file_lics_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_file_cpyright(value, optional=False):
     if isinstance(value, (utils.NoAssert, utils.SPDXNone)):
         return True
-    elif validate_is_free_form_text(value, optional):
+    elif validate_is_free_form_text_or_str(value, optional):
         return True
     else:
         return False
@@ -247,20 +252,20 @@ def validate_file_cpyright(value, optional=False):
 def validate_lics_from_file(value, optional=False):
     if value is None:
         return optional
-    elif isinstance(value, (document.License, utils.SPDXNone, utils.NoAssert)):
+    elif isinstance(value, (license.License, utils.SPDXNone, utils.NoAssert)):
         return True
     else:
         return False
 
 
 def validate_file_notice(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_lics_conc(value, optional=False):
     if value is None:
         return optional
-    elif isinstance(value, (utils.NoAssert, utils.SPDXNone, document.License)):
+    elif isinstance(value, (utils.NoAssert, utils.SPDXNone, license.License)):
         return True
     else:
         return False
@@ -269,7 +274,7 @@ def validate_lics_conc(value, optional=False):
 def validate_file_lics_in_file(value, optional=False):
     if value is None:
         return optional
-    elif isinstance(value, (utils.NoAssert, utils.SPDXNone, document.License)):
+    elif isinstance(value, (utils.NoAssert, utils.SPDXNone, license.License)):
         return True
     else:
         return False
@@ -290,6 +295,8 @@ def validate_extr_lic_name(value, optional=False):
 
 
 def validate_snippet_spdx_id(value, optional=False):
+    if value is None:
+        return optional
     value = value.split("#")[-1]
     if re.match(r"^SPDXRef[A-Za-z0-9.\-]+$", value) is not None:
         return True
@@ -298,11 +305,11 @@ def validate_snippet_spdx_id(value, optional=False):
 
 
 def validate_snip_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_snippet_copyright(value, optional=False):
-    if validate_is_free_form_text(value, optional):
+    if validate_is_free_form_text_or_str(value, optional):
         return True
     elif isinstance(value, (utils.NoAssert, utils.SPDXNone)):
         return True
@@ -313,10 +320,12 @@ def validate_snippet_copyright(value, optional=False):
 
 
 def validate_snip_lic_comment(value, optional=False):
-    return validate_is_free_form_text(value, optional)
+    return validate_is_free_form_text_or_str(value, optional)
 
 
 def validate_snip_file_spdxid(value, optional=False):
+    if value is None:
+        return optional
     if (
         re.match(r"(DocumentRef[A-Za-z0-9.\-]+:){0,1}SPDXRef[A-Za-z0-9.\-]+", value)
         is not None
@@ -329,7 +338,7 @@ def validate_snip_file_spdxid(value, optional=False):
 def validate_snip_lics_info(value, optional=False):
     if value is None:
         return optional
-    elif isinstance(value, (utils.NoAssert, utils.SPDXNone, document.License)):
+    elif isinstance(value, (utils.NoAssert, utils.SPDXNone, license.License)):
         return True
     else:
         return False
