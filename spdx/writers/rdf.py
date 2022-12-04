@@ -22,6 +22,7 @@ from spdx import config
 from spdx import file
 from spdx import license
 from spdx import utils
+from spdx.checksum import Checksum
 from spdx.package import Package
 from spdx.parsers.loggers import ErrorMessages
 from spdx.relationship import Relationship
@@ -44,26 +45,27 @@ class BaseWriter(object):
         self.spdx_namespace = Namespace("http://spdx.org/rdf/terms#")
         self.graph = Graph()
 
-    def create_checksum_node(self, chksum):
+    def create_checksum_node(self, checksum: Checksum) -> BNode:
         """
         Return a node representing spdx.checksum.
         """
-        chksum_node = BNode()
-        type_triple = (chksum_node, RDF.type, self.spdx_namespace.Checksum)
+        algo = checksum.identifier.algorithm_to_rdf_representation() or 'checksumAlgorithm_sha1'
+        checksum_node = BNode()
+        type_triple = (checksum_node, RDF.type, self.spdx_namespace.Checksum)
         self.graph.add(type_triple)
         algorithm_triple = (
-            chksum_node,
+            checksum_node,
             self.spdx_namespace.algorithm,
-            Literal(chksum.identifier),
+            Literal('http://spdx.org/rdf/terms#' + algo),
         )
         self.graph.add(algorithm_triple)
         value_triple = (
-            chksum_node,
+            checksum_node,
             self.spdx_namespace.checksumValue,
-            Literal(chksum.value),
+            Literal(checksum.value),
         )
         self.graph.add(value_triple)
-        return chksum_node
+        return checksum_node
 
     def to_special_value(self, value):
         """
@@ -264,13 +266,14 @@ class FileWriter(LicenseWriter):
                 ftype_triple = (file_node, self.spdx_namespace.fileType, ftype)
                 self.graph.add(ftype_triple)
 
-        self.graph.add(
-            (
-                file_node,
-                self.spdx_namespace.checksum,
-                self.create_checksum_node(doc_file.chksum),
+        for chk_sum in doc_file.checksums.values():
+            self.graph.add(
+                (
+                    file_node,
+                    self.spdx_namespace.checksum,
+                    self.create_checksum_node(chk_sum),
+                )
             )
-        )
 
         conc_lic_node = self.license_or_special(doc_file.conc_lics)
         conc_lic_triple = (
@@ -665,7 +668,7 @@ class ExternalDocumentRefWriter(BaseWriter):
         doc_uri_triple = (ext_doc_ref_node, self.spdx_namespace.spdxDocument, doc_uri)
         self.graph.add(doc_uri_triple)
 
-        checksum_node = self.create_checksum_node(ext_document_references.check_sum)
+        checksum_node = self.create_checksum_node(ext_document_references.checksum)
         self.graph.add((ext_doc_ref_node, self.spdx_namespace.checksum, checksum_node))
 
         return ext_doc_ref_node
@@ -770,9 +773,10 @@ class PackageWriter(LicenseWriter):
             package, package_node, self.spdx_namespace.filesAnalyzed, "files_analyzed"
         )
 
-        if package.has_optional_field("checksum"):
-            checksum_node = self.create_checksum_node(package.checksum)
-            self.graph.add((package_node, self.spdx_namespace.checksum, checksum_node))
+        if package.has_optional_field("checksums"):
+            for checksum in package.checksums.values():
+                checksum_node = self.create_checksum_node(checksum)
+                self.graph.add((package_node, self.spdx_namespace.checksum, checksum_node))
 
         if package.has_optional_field("homepage"):
             homepage_node = URIRef(self.to_special_value(package.homepage))
@@ -822,21 +826,23 @@ class PackageWriter(LicenseWriter):
             )
             self.graph.add(verif_triple)
         # Handle concluded license
-        conc_lic_node = self.license_or_special(package.conc_lics)
-        conc_lic_triple = (
-            package_node,
-            self.spdx_namespace.licenseConcluded,
-            conc_lic_node,
-        )
-        self.graph.add(conc_lic_triple)
+        if package.conc_lics:
+            conc_lic_node = self.license_or_special(package.conc_lics)
+            conc_lic_triple = (
+                package_node,
+                self.spdx_namespace.licenseConcluded,
+                conc_lic_node,
+            )
+            self.graph.add(conc_lic_triple)
         # Handle declared license
-        decl_lic_node = self.license_or_special(package.license_declared)
-        decl_lic_triple = (
-            package_node,
-            self.spdx_namespace.licenseDeclared,
-            decl_lic_node,
-        )
-        self.graph.add(decl_lic_triple)
+        if package.license_declared:
+            decl_lic_node = self.license_or_special(package.license_declared)
+            decl_lic_triple = (
+                package_node,
+                self.spdx_namespace.licenseDeclared,
+                decl_lic_node,
+            )
+            self.graph.add(decl_lic_triple)
         # Package licenses from files
         licenses_from_files_nodes = map(
             lambda el: self.license_or_special(el), package.licenses_from_files

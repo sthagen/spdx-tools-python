@@ -650,7 +650,7 @@ class Parser(object):
         """file_chksum : FILE_CHKSUM CHKSUM"""
         try:
             value = p[2]
-            self.builder.set_file_chksum(self.document, value)
+            self.builder.set_file_checksum(self.document, value)
         except OrderError:
             self.order_error("FileChecksum", "FileName", p.lineno(1))
         except CardinalityError:
@@ -934,7 +934,7 @@ class Parser(object):
         """pkg_chksum : PKG_CHKSUM CHKSUM"""
         try:
             value = p[2]
-            self.builder.set_pkg_chk_sum(self.document, value)
+            self.builder.set_pkg_checksum(self.document, value)
         except OrderError:
             self.order_error("PackageChecksum", "PackageFileName", p.lineno(1))
         except CardinalityError:
@@ -1560,7 +1560,7 @@ class Parser(object):
         self.logger.log(msg)
 
     def p_relationship_1(self, p):
-        """relationship : RELATIONSHIP LINE"""
+        """relationship : RELATIONSHIP relationship_value"""
         try:
             value = p[2]
             self.builder.add_relationship(self.document, value)
@@ -1576,6 +1576,14 @@ class Parser(object):
         self.error = True
         msg = ERROR_MESSAGES["RELATIONSHIP_VALUE"].format(p.lineno(1))
         self.logger.log(msg)
+
+    def p_relationship_value_with_doc_ref(self, p):
+        """relationship_value : DOC_REF_ID LINE"""
+        p[0] = p[1] + ":" + p[2]
+
+    def p_relationship_value_without_doc_ref(self, p):
+        """relationship_value : LINE"""
+        p[0] = p[1]
 
     def p_relationship_comment_1(self, p):
         """relationship_comment : RELATIONSHIP_COMMENT text_or_line"""

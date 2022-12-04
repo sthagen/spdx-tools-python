@@ -8,10 +8,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from spdx import file
+from typing import Dict, Union
+
+from spdx.document import Document
 from spdx.parsers import rdfbuilders
 from spdx.parsers import tagvaluebuilders
 from spdx.parsers import validations
+from spdx.checksum import Checksum, ChecksumAlgorithm
 from spdx.parsers.builderexceptions import SPDXValueError
 from spdx.parsers.builderexceptions import CardinalityError
 from spdx.parsers.builderexceptions import OrderError
@@ -159,18 +162,37 @@ class FileBuilder(rdfbuilders.FileBuilder):
     def __init__(self):
         super(FileBuilder, self).__init__()
 
+    def set_file_checksum(self, doc: Document, checksum: Union[Dict, Checksum, str]) -> bool:
+        """
+        Set the file checksum.
+        checksum - A string
+        raise OrderError if no file defined.
+        """
+        if not self.has_file(doc):
+            raise OrderError("No file for checksum defined.")
+
+        if isinstance(checksum, dict):
+            algo = checksum.get('algorithm') or 'SHA1'
+            identifier = ChecksumAlgorithm.checksum_algorithm_from_string(algo)
+            self.file(doc).set_checksum(Checksum(identifier, checksum.get('checksumValue')))
+        elif isinstance(checksum, Checksum):
+            self.file(doc).set_checksum(checksum)
+        elif isinstance(checksum, str):
+            self.file(doc).set_checksum(Checksum(ChecksumAlgorithm.SHA1, checksum))
+        return True
+
     def set_file_notice(self, doc, text):
         """
         Set file notice
-        Raise OrderError if no package or file defined.
+        Raise OrderError if no file defined.
         Raise CardinalityError if more than one.
         """
-        if self.has_package(doc) and self.has_file(doc):
-            self.file_notice_set = True
-            self.file(doc).notice = text
-            return True
-        else:
+        if not self.has_file(doc):
             raise OrderError("File::Notice")
+
+        self.file_notice_set = True
+        self.file(doc).notice = text
+        return True
 
     def set_file_type(self, doc, type_value):
         """
@@ -182,6 +204,52 @@ class FileBuilder(rdfbuilders.FileBuilder):
         """
 
         return super(FileBuilder, self).set_file_type(doc, f"namespace#fileType_{type_value.lower()}")
+
+    def set_file_copyright(self, doc, text):
+        """
+        Raise OrderError if no file defined.
+        Raise CardinalityError if more than one.
+        """
+        if not self.has_file(doc):
+            raise OrderError("File::CopyRight")
+        if self.file_copytext_set:
+            raise CardinalityError("File::CopyRight")
+        self.file_copytext_set = True
+        self.file(doc).copyright = text
+        return True
+
+    def set_file_license_comment(self, doc, text):
+        """
+        Raise OrderError if no file defined.
+        Raise CardinalityError if more than one per file.
+        """
+        if not self.has_file(doc):
+            raise OrderError("File::LicenseComment")
+        if self.file_license_comment_set:
+            raise CardinalityError("File::LicenseComment")
+        self.file(doc).license_comment = text
+        return True
+
+    def set_file_attribution_text(self, doc, text):
+        """
+        Set the file's attribution text.
+        """
+        if self.has_file(doc):
+            self.file(doc).attribution_text = text
+            return True
+
+    def set_file_comment(self, doc, text):
+        """
+        Raise OrderError if no file defined.
+        Raise CardinalityError if more than one comment set.
+        """
+        if not self.has_file(doc):
+            raise OrderError("File::Comment")
+        if self.file_comment_set:
+            raise CardinalityError("File::Comment")
+        self.file_comment_set = True
+        self.file(doc).comment = text
+        return True
 
 
 class AnnotationBuilder(tagvaluebuilders.AnnotationBuilder):

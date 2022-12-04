@@ -12,6 +12,8 @@
 # limitations under the License.
 
 import os
+
+from spdx import utils
 from spdx.parsers.parse_anything import parse_file
 import spdx.file as spdxfile
 
@@ -51,8 +53,8 @@ def main(file, force):
             "Package Download Location: {0}".format(package.download_location)
         )
         print("Package Homepage: {0}".format(package.homepage))
-        if package.checksum:
-            print("Package Checksum: {0}".format(package.checksum.value))
+        for checksum in doc.package.checksums.values():
+            print("Package Checksum: {0} {1}".format(checksum.identifier.name, checksum.value))
         print("Package Attribution Text: {0}".format(package.attribution_text))
         print("Package verification code: {0}".format(package.verif_code))
         print(
@@ -82,11 +84,14 @@ def main(file, force):
         print("\tFile name: {0}".format(f.name))
         for file_type in f.file_types:
             print("\tFile type: {0}".format(file_type.name))
-        print("\tFile Checksum: {0}".format(f.chksum.value))
+        for file_checksum in f.checksums.values():
+            print("\tFile Checksum: {0} {1}".format(file_checksum.identifier.name, file_checksum.value))
         print("\tFile license concluded: {0}".format(f.conc_lics))
         print(
             "\tFile license info in file: {0}".format(
-                ",".join(map(lambda l: l.identifier, f.licenses_in_file))
+                ",".join(
+                    map(lambda l: l.identifier if not isinstance(l, (utils.SPDXNone, utils.NoAssert)) else l.to_value(),
+                        f.licenses_in_file))
             )
         )
         print(
@@ -118,6 +123,7 @@ def main(file, force):
             print("\tRelationship: {0}".format(relation.comment))
         except:
             continue
+
 
 if __name__ == "__main__":
     main()

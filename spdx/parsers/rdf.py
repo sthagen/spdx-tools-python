@@ -21,6 +21,7 @@ from rdflib import RDFS
 from spdx import document
 from spdx import license
 from spdx import utils
+from spdx.checksum import Checksum, ChecksumAlgorithm
 from spdx.parsers.builderexceptions import CardinalityError
 from spdx.parsers.builderexceptions import SPDXValueError
 from spdx.parsers.loggers import ErrorMessages
@@ -64,6 +65,14 @@ ERROR_MESSAGES = {
     "to the license, denoted by LicenseRef-[idstring] or spdx:noassertion or spdx:none.",
     "RELATIONSHIP": "relationship type must be of supported type",
 }
+
+
+def convert_rdf_checksum_algorithm(rdf_checksum_algorithm: str) -> ChecksumAlgorithm:
+    split_string = rdf_checksum_algorithm.split('#')
+    if len(split_string) != 2:
+        raise SPDXValueError('Unknown checksum algorithm {}'.format(rdf_checksum_algorithm))
+    checksum_algorithm = ChecksumAlgorithm.checksum_from_rdf(split_string[1])
+    return checksum_algorithm
 
 
 class BaseParser(object):
@@ -352,7 +361,7 @@ class PackageParser(LicenseParser):
         self.p_pkg_down_loc(p_term, self.spdx_namespace["downloadLocation"])
         self.p_pkg_files_analyzed(p_term, self.spdx_namespace["filesAnalyzed"])
         self.p_pkg_homepg(p_term, self.doap_namespace["homepage"])
-        self.p_pkg_chk_sum(p_term, self.spdx_namespace["checksum"])
+        self.p_pkg_checksum(p_term, self.spdx_namespace["checksum"])
         self.p_pkg_src_info(p_term, self.spdx_namespace["sourceInfo"])
         self.p_pkg_verif_code(p_term, self.spdx_namespace["packageVerificationCode"])
         self.p_pkg_attribution_text(p_term, self.spdx_namespace["attributionText"])
@@ -503,16 +512,17 @@ class PackageParser(LicenseParser):
                 self.more_than_one_error("package source info")
                 break
 
-    def p_pkg_chk_sum(self, p_term, predicate):
-        for _s, _p, checksum in self.graph.triples((p_term, predicate, None)):
+    def p_pkg_checksum(self, p_term, predicate):
+        for _s, _p, pkg_checksum in self.graph.triples((p_term, predicate, None)):
             for _, _, value in self.graph.triples(
-                (checksum, self.spdx_namespace["checksumValue"], None)
+                (pkg_checksum, self.spdx_namespace["checksumValue"], None)
             ):
-                try:
-                    self.builder.set_pkg_chk_sum(self.doc, str(value))
-                except CardinalityError:
-                    self.more_than_one_error("Package checksum")
-                    break
+                for _, _, algo in self.graph.triples(
+                        (pkg_checksum, self.spdx_namespace["algorithm"], None)
+                ):
+                    algorithm_identifier = convert_rdf_checksum_algorithm(str(algo))
+                    checksum = Checksum(algorithm_identifier, str(value))
+                    self.builder.set_pkg_checksum(self.doc, checksum)
 
     def p_pkg_homepg(self, p_term, predicate):
         for _s, _p, o in self.graph.triples((p_term, predicate, None)):
@@ -615,7 +625,7 @@ class FileParser(LicenseParser):
 
         self.p_file_spdx_id(f_term, self.spdx_namespace["File"])
         self.p_file_type(f_term, self.spdx_namespace["fileType"])
-        self.p_file_chk_sum(f_term, self.spdx_namespace["checksum"])
+        self.p_file_checksum(f_term, self.spdx_namespace["checksum"])
         self.p_file_lic_conc(f_term, self.spdx_namespace["licenseConcluded"])
         self.p_file_lic_info(f_term, self.spdx_namespace["licenseInfoInFile"])
         self.p_file_comments_on_lics(f_term, self.spdx_namespace["licenseComments"])
@@ -769,18 +779,20 @@ class FileParser(LicenseParser):
         except CardinalityError:
             self.more_than_one_error("file type")
 
-    def p_file_chk_sum(self, f_term, predicate):
+    def p_file_checksum(self, f_term, predicate):
         """
-        Set file checksum. Assumes SHA1 algorithm without checking.
+        Set file checksum.
         """
-        try:
-            for _s, _p, checksum in self.graph.triples((f_term, predicate, None)):
-                for _, _, value in self.graph.triples(
-                    (checksum, self.spdx_namespace["checksumValue"], None)
+        for _s, _p, file_checksum in self.graph.triples((f_term, predicate, None)):
+            for _, _, value in self.graph.triples(
+                (file_checksum, self.spdx_namespace["checksumValue"], None)
+            ):
+                for _, _, algo in self.graph.triples(
+                        (file_checksum, self.spdx_namespace["algorithm"], None)
                 ):
-                    self.builder.set_file_chksum(self.doc, str(value))
-        except CardinalityError:
-            self.more_than_one_error("File checksum")
+                    algorithm_identifier = convert_rdf_checksum_algorithm(str(algo))
+                    checksum = Checksum(algorithm_identifier, str(value))
+                    self.builder.set_file_checksum(self.doc, checksum)
 
     def p_file_lic_conc(self, f_term, predicate):
         """
@@ -1105,9 +1117,9 @@ class RelationshipParser(BaseParser):
         relationship = self.get_relationship(subject_term, relation_term)
         relationship_comment = self.get_relationship_comment(relation_term)
         if relationship is not None:
-            self.builder.add_relationship(self.doc, relationship)
-        if relationship_comment is not None:
-            self.builder.add_relationship_comment(self.doc, relationship_comment)
+            relationship_added: bool = self.builder.add_relationship(self.doc, relationship)
+            if relationship_comment is not None and relationship_added:
+                self.builder.add_relationship_comment(self.doc, relationship_comment)
 
     def get_relationship(self, subject_term, relation_term):
         """
@@ -1205,6 +1217,10 @@ class RelationshipParser(BaseParser):
                     rtype = "HAS_PREREQUISITE"
                 elif rtype.endswith("other"):
                     rtype = "OTHER"
+                elif rtype.endswith("specificationFor"):
+                    rtype = "SPECIFICATION_FOR"
+                elif rtype.endswith("requirementDescriptionFor"):
+                    rtype = "REQUIREMENT_DESCRIPTION_FOR"
 
             except SPDXValueError:
                 self.value_error("RELATIONSHIP", rtype)

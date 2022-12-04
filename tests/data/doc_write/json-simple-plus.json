@@ -27,6 +27,10 @@
                 {
                     "algorithm": "SHA1",
                     "checksumValue": "SOME-SHA1"
+                },
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "SOME-SHA256"
                 }
             ],
             "licenseDeclared": "NOASSERTION",
@@ -37,10 +41,10 @@
             "hasFiles": [
                 "SPDXRef-File"
             ],
-            "primaryPackagePurpose" : "FILE",
-            "releaseDate" : "2021-01-01T12:00:00Z",
-            "builtDate" : "2021-01-01T12:00:00Z",
-            "validUntilDate" : "2022-01-01T12:00:00Z"
+            "primaryPackagePurpose": "FILE",
+            "releaseDate": "2021-01-01T12:00:00Z",
+            "builtDate": "2021-01-01T12:00:00Z",
+            "validUntilDate": "2022-01-01T12:00:00Z"
         }
     ],
     "files": [
@@ -50,6 +54,10 @@
                 {
                     "algorithm": "SHA1",
                     "checksumValue": "SOME-SHA1"
+                },
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "SOME-SHA256"
                 }
             ],
             "licenseConcluded": "NOASSERTION",

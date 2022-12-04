@@ -10,16 +10,20 @@
 # limitations under the License.
 
 import re
+from typing import Dict, Union
 
-from spdx import checksum, file
+from spdx import file
 from spdx import license
 from spdx import package
 from spdx import version
+from spdx.checksum import Checksum, ChecksumAlgorithm
+from spdx.document import Document
 from spdx.parsers.builderexceptions import CardinalityError
 from spdx.parsers.builderexceptions import OrderError
 from spdx.parsers.builderexceptions import SPDXValueError
 from spdx.parsers import tagvaluebuilders
 from spdx.parsers import validations
+from spdx.parsers.rdf import convert_rdf_checksum_algorithm
 
 
 class DocBuilder(object):
@@ -141,8 +145,8 @@ class ExternalDocumentRefBuilder(tagvaluebuilders.ExternalDocumentRefBuilder):
         chk_sum - The checksum value in the form of a string.
         """
         if chk_sum:
-            doc.ext_document_references[-1].check_sum = checksum.Algorithm(
-                "SHA1", chk_sum
+            doc.ext_document_references[-1].checksum = Checksum(
+                ChecksumAlgorithm.SHA1, chk_sum
             )
         else:
             raise SPDXValueError("ExternalDocumentRef::Checksum")
@@ -184,19 +188,28 @@ class PackageBuilder(tagvaluebuilders.PackageBuilder):
     def __init__(self):
         super(PackageBuilder, self).__init__()
 
-    def set_pkg_chk_sum(self, doc, chk_sum):
+    def set_pkg_checksum(self, doc, checksum: Union[Checksum, Dict]):
         """
-        Set the package check sum, if not already set.
-        chk_sum - A string
-        Raise CardinalityError if already defined.
+        Set the package checksum.
+        checksum - A Checksum or a Dict
+        Raise SPDXValueError if checksum type invalid.
         Raise OrderError if no package previously defined.
         """
         self.assert_package_exists()
-        if not self.package_chk_sum_set:
-            self.package_chk_sum_set = True
-            doc.packages[-1].checksum = checksum.Algorithm("SHA1", chk_sum)
+        if isinstance(checksum, dict):
+            algo = checksum.get('algorithm') or ChecksumAlgorithm.SHA1
+            if algo.startswith('checksumAlgorithm_'):
+                algo = convert_rdf_checksum_algorithm(algo) or ChecksumAlgorithm.SHA1
+            else:
+                algo = ChecksumAlgorithm.checksum_algorithm_from_string(algo)
+            doc.packages[-1].set_checksum(Checksum(identifier=algo, value=checksum.get('checksumValue')))
+        elif isinstance(checksum, Checksum):
+            doc.packages[-1].set_checksum(checksum)
+        elif isinstance(checksum, str):
+            # kept for backwards compatibility
+            doc.packages[-1].set_checksum(Checksum(identifier=ChecksumAlgorithm.SHA1, value=checksum))
         else:
-            raise CardinalityError("Package::CheckSum")
+            raise SPDXValueError("Invalid value for package checksum.")
 
     def set_pkg_source_info(self, doc, text):
         """
@@ -380,22 +393,22 @@ class FileBuilder(tagvaluebuilders.FileBuilder):
     def __init__(self):
         super(FileBuilder, self).__init__()
 
-    def set_file_chksum(self, doc, chk_sum):
+    def set_file_checksum(self, doc: Document, chk_sum: Union[Checksum, Dict, str]):
         """
         Set the file check sum, if not already set.
-        chk_sum - A string
-        Raise CardinalityError if already defined.
-        Raise OrderError if no package previously defined.
+        chk_sum - A checksum.Checksum or a dict
         """
-        if self.has_package(doc) and self.has_file(doc):
-            if not self.file_chksum_set:
-                self.file_chksum_set = True
-                self.file(doc).chksum = checksum.Algorithm("SHA1", chk_sum)
-                return True
-            else:
-                raise CardinalityError("File::CheckSum")
-        else:
-            raise OrderError("File::CheckSum")
+        if self.has_file(doc):
+            if isinstance(chk_sum, dict):
+                identifier = ChecksumAlgorithm.checksum_algorithm_from_string(chk_sum.get('algorithm'))
+                self.file(doc).set_checksum(Checksum(identifier,
+                                                     chk_sum.get('checksumValue')))
+            elif isinstance(chk_sum, Checksum):
+                self.file(doc).set_checksum(chk_sum)
+            elif isinstance(chk_sum, str):
+                # kept for backwards compatibility
+                self.file(doc).set_checksum(Checksum(ChecksumAlgorithm.SHA1, chk_sum))
+            return True
 
     def set_file_license_comment(self, doc, text):
         """

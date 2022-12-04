@@ -117,14 +117,15 @@ def validate_snippet_attribution_text(value, optional=False):
 
 
 def validate_pkg_ext_ref_category(value, optional=False):
-    if value.upper() in ["SECURITY", "OTHER", "PACKAGE-MANAGER"]:
+    # PACKAGE_MANAGER is used in the json schema for 2.2. For now, we simply allow both versions
+    if value.upper() in ["SECURITY", "OTHER", "PACKAGE-MANAGER", "PACKAGE_MANAGER"]:
         return True
     else:
         return False
 
 
 def validate_pkg_ext_ref_type(value, optional=False):
-    if re.match(r"^[A-Za-z0-9.\-]+$", value) is not None:
+    if re.match(r"^\S+$", value) is not None:
         return True
     else:
         return False

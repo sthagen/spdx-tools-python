@@ -5,7 +5,7 @@ from typing import List
 
 import pytest
 
-from spdx.checksum import Algorithm
+from spdx.checksum import Checksum, ChecksumAlgorithm
 from spdx.document import Document
 from spdx.file import File
 from spdx.license import License
@@ -129,7 +129,7 @@ def test_files_without_package(temporary_file_path, out_format):
     file: File = minimal_file()
     document.add_file(file)
     describes_relationship: Relationship = Relationship("SPDXRef-DOCUMENT DESCRIBES SPDXRef-File")
-    document.add_relationships(relationship=describes_relationship)
+    document.add_relationship(relationship=describes_relationship)
 
     file_path_with_ending = temporary_file_path + "." + out_format
     write_anything.write_file(document, file_path_with_ending, validate=False)
@@ -147,7 +147,8 @@ def minimal_document():
 
 
 def minimal_file():
-    file = File(name="Example File", spdx_id="SPDXRef-File", chksum=Algorithm('SHA1', 'SOME-SHA1'))
+    file = File(name="Example File", spdx_id="SPDXRef-File")
+    file.set_checksum(Checksum(ChecksumAlgorithm.SHA1, 'some-sha1-value'))
     return file
 
 

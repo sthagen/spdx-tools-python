@@ -1,4 +1,3 @@
-
 # Copyright (c) the SPDX tools authors
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +10,13 @@
 # limitations under the License.
 
 
-from collections import OrderedDict
 import io
 import json
 import ntpath
 import os
 import posixpath
 import re
+from collections import OrderedDict
 from typing import List
 
 import xmltodict
@@ -26,6 +25,7 @@ import yaml
 import spdx
 from spdx import utils
 from spdx.relationship import Relationship
+from spdx.utils import NoAssert
 
 test_data_dir = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -148,7 +148,7 @@ def load_and_clean_tv(location):
     with io.open(location, encoding='utf-8') as l:
         content = l.read()
     content = [l for l in content.splitlines(False)
-        if l and l.strip() and not l.startswith(('Creator: ', 'Created: ',))]
+               if l and l.strip() and not l.startswith(('Creator: ', 'Created: ',))]
     return '\n'.join(content)
 
 
@@ -177,7 +177,7 @@ def load_and_clean_json(location):
     data = json.loads(content)
 
     if 'creationInfo' in data:
-        del(data['creationInfo'])
+        del (data['creationInfo'])
 
     return sort_nested(data)
 
@@ -207,7 +207,7 @@ def load_and_clean_yaml(location):
     data = yaml.safe_load(content)
 
     if 'creationInfo' in data:
-        del(data['creationInfo'])
+        del (data['creationInfo'])
 
     return sort_nested(data)
 
@@ -237,7 +237,7 @@ def load_and_clean_xml(location):
     data = xmltodict.parse(content, encoding='utf-8')
 
     if 'creationInfo' in data['Document']:
-        del(data['Document']['creationInfo'])
+        del (data['Document']['creationInfo'])
 
     return sort_nested(data)
 
@@ -263,31 +263,36 @@ class TestParserUtils(object):
     """
 
     @classmethod
-    def license_to_dict(cls, license):
+    def license_to_dict(cls, license_var):
         """
         Represents spdx.license.License, spdx.license.LicenseConjunction or
         spdx.license.LicenseDisjunction as a Python dictionary
         """
         CONJ_SEP = re.compile(' AND | and ')
         DISJ_SEP = re.compile(' OR | or ')
-        if license is None:
+        if license_var is None:
             return None
         license_dict = OrderedDict()
 
-        if isinstance(license, spdx.license.LicenseConjunction):
+        if isinstance(license_var, NoAssert):
+            license_dict['type'] = 'Single'
+            license_dict['identifier'] = 'NOASSERTION'
+            license_dict['name'] = 'NOASSERTION'
+            return license_dict
+        elif isinstance(license_var, spdx.license.LicenseConjunction):
             license_dict['type'] = 'Conjunction'
             sep_regex = CONJ_SEP
-        elif isinstance(license, spdx.license.LicenseDisjunction):
+        elif isinstance(license_var, spdx.license.LicenseDisjunction):
             license_dict['type'] = 'Disjunction'
             sep_regex = DISJ_SEP
         else:
             license_dict['type'] = 'Single'
-            license_dict['identifier'] = license.identifier
-            license_dict['name'] = license.full_name
+            license_dict['identifier'] = license_var.identifier
+            license_dict['name'] = license_var.full_name
             return license_dict
 
-        license_dict['identifier'] = sorted(sep_regex.split(license.identifier))
-        license_dict['name'] = sorted(sep_regex.split(license.full_name))
+        license_dict['identifier'] = sorted(sep_regex.split(license_var.identifier))
+        license_dict['name'] = sorted(sep_regex.split(license_var.full_name))
 
         return license_dict
 
@@ -331,7 +336,7 @@ class TestParserUtils(object):
         if checksum is None:
             return None
         return OrderedDict([
-            ('identifier', checksum.identifier),
+            ('identifier', checksum.identifier.name),
             ('value', checksum.value)])
 
     @classmethod
@@ -350,28 +355,28 @@ class TestParserUtils(object):
             ('description', package.description),
             ('versionInfo', package.version),
             ('sourceInfo', package.source_info),
-            ('downloadLocation', package.download_location),
+            ('downloadLocation', str(package.download_location)),
             ('homepage', package.homepage),
             ('originator', cls.entity_to_dict(package.originator)),
             ('supplier', cls.entity_to_dict(package.supplier)),
             ('licenseConcluded', cls.license_to_dict(package.conc_lics)),
             ('licenseDeclared', cls.license_to_dict(package.license_declared)),
-            ('copyrightText', package.cr_text),
+            ('copyrightText', str(package.cr_text)),
             ('licenseComment', package.license_comment),
-            ('checksum', cls.checksum_to_dict(package.checksum)),
+            ('checksums', [cls.checksum_to_dict(checksum) for checksum in package.checksums.values()]),
             ('licenseInfoFromFiles', [cls.license_to_dict(lic) for lic in lics_from_files]),
             ('verificationCode', OrderedDict([
                 ('value', package.verif_code),
                 ('excludedFilesNames', sorted(package.verif_exc_files))])
-            )
+             )
         ])
 
         if package.built_date:
             package_dict['builtDate'] = utils.datetime_iso_format(package.built_date)
-            
+
         if package.release_date:
             package_dict['releaseDate'] = utils.datetime_iso_format(package.release_date)
-            
+
         if package.valid_until_date:
             package_dict['validUntilDate'] = utils.datetime_iso_format(package.valid_until_date)
 
@@ -379,7 +384,6 @@ class TestParserUtils(object):
             package_dict['primaryPackagePurpose'] = package.primary_package_purpose.name.replace("_", "-")
 
         return package_dict
-
 
     @classmethod
     def files_to_list(cls, files):
@@ -390,7 +394,10 @@ class TestParserUtils(object):
 
         for file in files:
             lics_in_files = sorted(file.licenses_in_file, key=lambda lic: lic.identifier)
-            contributors = sorted(file.contributors, key=lambda c: c.name)
+            chk_sums = []
+            for checksum in file.checksums.values():
+                chk_sums.append(cls.checksum_to_dict(checksum))
+
             file_dict = OrderedDict([
                 ('id', file.spdx_id),
                 ('fileName', file.name),
@@ -400,9 +407,9 @@ class TestParserUtils(object):
                 ('copyrightText', file.copyright),
                 ('licenseComment', file.license_comment),
                 ('notice', file.notice),
-                ('checksum', cls.checksum_to_dict(file.chksum)),
+                ('checksums', chk_sums),
                 ('licenseInfoInFiles', [cls.license_to_dict(lic) for lic in lics_in_files]),
-                ('contributors', [cls.entity_to_dict(contributor) for contributor in contributors]),
+                ('contributors', sorted(file.contributors)),
                 ('dependencies', sorted(file.dependencies)),
                 ('artifactOfProjectName', file.artifact_of_project_name),
                 ('artifactOfProjectHome', file.artifact_of_project_home),
@@ -423,7 +430,7 @@ class TestParserUtils(object):
             ext_doc_ref_dict = OrderedDict([
                 ('externalDocumentId', ext_doc_ref.external_document_id),
                 ('spdxDocument', ext_doc_ref.spdx_document_uri),
-                ('checksum', cls.checksum_to_dict(ext_doc_ref.check_sum)),
+                ('checksum', cls.checksum_to_dict(ext_doc_ref.checksum)),
             ])
             ext_doc_refs_list.append(ext_doc_ref_dict)
 
@@ -480,7 +487,7 @@ class TestParserUtils(object):
                 ('comment', review.comment),
                 ('reviewer', cls.entity_to_dict(review.reviewer)),
                 ('date', utils.datetime_iso_format(review.review_date))
-             ])
+            ])
             reviews_list.append(review_dict)
 
         return reviews_list
@@ -513,10 +520,10 @@ class TestParserUtils(object):
         relationships_list = []
         for relationship in relationships:
             relationship_dict = OrderedDict([
-                                                ('spdx_element_id', relationship.spdx_element_id),
-                                                ('relationship_type', relationship.relationship_type),
-                                                ('related_spdx_element', relationship.related_spdx_element)
-                                            ])
+                ('spdx_element_id', relationship.spdx_element_id),
+                ('relationship_type', relationship.relationship_type),
+                ('related_spdx_element', relationship.related_spdx_element)
+            ])
             relationships_list.append(relationship_dict)
 
         return relationships_list

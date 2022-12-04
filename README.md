@@ -34,15 +34,18 @@ This is the result of an initial GSoC contribution by @[ah450](https://github.co
 
 # Features
 
-* API to create and manipulate SPDX documents.
-* Parse, convert and create Tag/Value, RDF, JSON, YAML, XML format SPDX files
+* API to create and manipulate SPDX v2.3 documents.
+* Parse, convert, create and validate Tag/Value, RDF, JSON, YAML, XML format SPDX files
 
+### Known Limitations
+
+* No full 2.3 support for RDF format [#295](https://github.com/spdx/tools-python/issues/295)
+* No full license expression support [#10](https://github.com/spdx/tools-python/issues/10)
+* Output of the CLI parser is incomplete [#268](https://github.com/spdx/tools-python/issues/268)
 
 # TODOs
 
-* Update to full SPDX v2.2.1(ISO 5962:2021)
-* Update to full SPDX v2.3
-* Add full license expression support
+* Include specialized validation for SPDX v2.2.1(ISO 5962:2021)
 
 
 # How to use
@@ -51,7 +54,7 @@ This is the result of an initial GSoC contribution by @[ah450](https://github.co
 
 1. **PARSER** (for parsing any format):
 * Use `pyspdxtools_parser --file <filename>` where `<filename>` is the location of the file.              
-Try running: `pyspdxtools_parser --file data/SPDXRdfExample.rdf`.
+If you are using a source distribution, try running: `pyspdxtools_parser --file tests/data/formats/SPDXRdfExample.rdf`.
 
 * Or you can use `pyspdxtools_parser` only, and it will automatically prompt/ask for `filename`.
 
@@ -62,24 +65,24 @@ Try running: `pyspdxtools_parser --file data/SPDXRdfExample.rdf`.
 * If I/O formats are known:
 
     * Use `pyspdxtools_convertor --infile/-i <input_file> --outfile/-o <output_file>` where `<input_file>` is the location of the file to be converted
-    (Note: only RDF and Tag formatted supported) and `<output_file>` is the location of the output file.  
-    Try running : `pyspdxtools_convertor --infile data/SPDXRdfExample.rdf --outfile output.json` 
+    and `<output_file>` is the location of the output file.  
+    If you are using a source distribution, try running : `pyspdxtools_convertor --infile tests/data/formats/SPDXRdfExample.rdf --outfile output.json` 
 
 * If I/O formats are not known:
 
-    * Use `pyspdxtools_convertor --from/-f <input_format> <input_file> --to/-t <output_format> <output_file>` where `<input_format>` is the manually entered format of the input file (can be either rdf or tag)
-    and `<out_format>` (can be tag, rdf, json, yaml, xml) is the manually entered format of the output file. 
-    Try running : `pyspdxtools_convertor --from tag data/SPDXTagExample.in --to yaml output.out` 
+    * Use `pyspdxtools_convertor --from/-f <input_format> <input_file> --to/-t <output_format> <output_file>` where `<input_format>` is the manually entered format of the input file
+    and `<out_format>` is the manually entered format of the output file. 
+    If you are using a source distribution, try running : `pyspdxtools_convertor --from tag tests/data/formats/SPDXTagExample.in --to yaml output.out` 
 
 * If one of the formats is known and the other is not, you can use a mixture of the above two points.  
-Example: `pyspdxtools_convertor -f rdf data/SPDXRdfExample.xyz -o output.xml`
+Example (if you are using a source distribution): `pyspdxtools_convertor -f rdf tests/data/formats/SPDXRdfExample.xyz -o output.xml`
 
 * For help use `pyspdxtools_convertor --help`
 
 
 # Installation
 
-As always you should work in a virtualenv or venv. You can install a local clone
+As always you should work in a virtualenv (venv). You can install a local clone
 of this repo with `yourenv/bin/pip install .` or install it from PyPI with
 `yourenv/bin/pip install spdx-tools`. Note that on Windows it would be `Scripts`
 instead of `bin`.

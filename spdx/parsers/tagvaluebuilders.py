@@ -9,42 +9,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import auto, Enum
 import re
-from typing import Dict
+from typing import Dict, List
 
 from spdx import annotation
-from spdx import checksum
 from spdx import creationinfo
 from spdx import file
 from spdx import license
 from spdx import package
-from spdx import relationship
 from spdx import review
 from spdx import snippet
 from spdx import utils
 from spdx import version
-
-from spdx.document import ExternalDocumentRef
+from spdx.checksum import Checksum
+from spdx.document import ExternalDocumentRef, Document
 from spdx.package import PackagePurpose
+from spdx.parsers import validations
 from spdx.parsers.builderexceptions import CardinalityError
 from spdx.parsers.builderexceptions import OrderError
 from spdx.parsers.builderexceptions import SPDXValueError
-from spdx.parsers import validations
-
-
-def checksum_from_sha1(value):
-    """
-    Return an spdx.checksum.Algorithm instance representing the SHA1
-    checksum or None if does not match CHECKSUM_RE.
-    """
-    # More constrained regex at lexer level
-    CHECKSUM_RE = re.compile("SHA1:\\s*([\\S]+)", re.UNICODE)
-    match = CHECKSUM_RE.match(value)
-    if match:
-        return checksum.Algorithm(identifier="SHA1", value=match.group(1))
-    else:
-        return None
+from spdx.relationship import Relationship
 
 
 def str_from_text(text) -> str:
@@ -202,7 +186,7 @@ class ExternalDocumentRefBuilder(object):
         """
         Set the `check_sum` attribute of the `ExternalDocumentRef` object.
         """
-        doc.ext_document_references[-1].check_sum = checksum_from_sha1(chksum)
+        doc.ext_document_references[-1].checksum = Checksum.checksum_from_string(chksum)
 
     def add_ext_doc_refs(self, doc, ext_doc_id, spdx_doc_uri, chksum):
         self.set_ext_doc_id(doc, ext_doc_id)
@@ -211,7 +195,6 @@ class ExternalDocumentRefBuilder(object):
 
 
 class EntityBuilder(object):
-
     tool_re = re.compile(r"Tool:\s*(.+)", re.UNICODE)
     person_re = re.compile(r"Person:\s*(([^(])+)(\((.*)\))?", re.UNICODE)
     org_re = re.compile(r"Organization:\s*(([^(])+)(\((.*)\))?", re.UNICODE)
@@ -536,15 +519,31 @@ class RelationshipBuilder(object):
         # FIXME: this state does not make sense
         self.relationship_comment_set = False
 
-    def add_relationship(self, doc, relationship_term):
+    def add_relationship(self, doc: Document, relationship_term: str) -> bool:
         """
         Raise SPDXValueError if type is unknown.
         """
         self.reset_relationship()
-        doc.add_relationships(relationship.Relationship(relationship_term))
-        return True
+        relationship_to_add = Relationship(relationship_term)
+        existing_relationships: List[Relationship] = doc.relationships
 
-    def add_relationship_comment(self, doc, comment):
+        if relationship_to_add not in existing_relationships:
+            doc.add_relationship(relationship_to_add)
+            return True
+
+        existing_relationship: Relationship = existing_relationships[existing_relationships.index(relationship_to_add)]
+
+        # If the relationship already exists without comment, we remove the old one and re-append it at the end. This
+        # allows to add a comment to the relationship (since a comment will always be added to the latest
+        # relationship). If an equal relationship with comment already exists, we ignore the new relationship.
+        if not existing_relationship.has_comment:
+            existing_relationships.remove(relationship_to_add)
+            doc.add_relationship(relationship_to_add)
+            return True
+
+        return False
+
+    def add_relationship_comment(self, doc: Document, comment: str) -> bool:
         """
         Set the annotation comment.
         Raise CardinalityError if already set.
@@ -780,19 +779,15 @@ class PackageBuilder(object):
             ).split(",")
         return True
 
-    def set_pkg_chk_sum(self, doc, chk_sum):
+    def set_pkg_checksum(self, doc, checksum):
         """
-        Set the package check sum, if not already set.
-        chk_sum - A string
-        Raise CardinalityError if already defined.
+        Set the package checksum, if not already set.
+        checksum - A string
         Raise OrderError if no package previously defined.
         """
         self.assert_package_exists()
-        if self.package_chk_sum_set:
-            raise CardinalityError("Package::CheckSum")
-
         self.package_chk_sum_set = True
-        doc.packages[-1].checksum = checksum_from_sha1(chk_sum)
+        doc.packages[-1].set_checksum(Checksum.checksum_from_string(checksum))
         return True
 
     def set_pkg_source_info(self, doc, text):
@@ -1031,7 +1026,7 @@ class PackageBuilder(object):
             raise CardinalityError("Package::ValidUntilDate")
 
         date = utils.datetime_from_iso_format(valid_until_date)
-        if date is  None:
+        if date is None:
             raise SPDXValueError("Package::ValidUntilDate")
 
         self.package_valid_until_date_set = True
@@ -1197,19 +1192,15 @@ class FileBuilder(object):
 
         spdx_file.file_types.append(file_type)
 
-    def set_file_chksum(self, doc, chksum):
+    def set_file_checksum(self, doc: Document, checksum: str):
         """
-        Raise OrderError if no package or file defined.
-        Raise CardinalityError if more than one chksum set.
+        Raise OrderError if no file defined.
         """
-        if not self.has_file(doc):
+        if self.has_file(doc):
+            new_checksum = Checksum.checksum_from_string(checksum)
+            self.file(doc).set_checksum(new_checksum)
+        else:
             raise OrderError("File::CheckSum")
-
-        if self.file_chksum_set:
-            raise CardinalityError("File::CheckSum")
-
-        self.file_chksum_set = True
-        self.file(doc).chksum = checksum_from_sha1(chksum)
         return True
 
     def set_concluded_license(self, doc, lic):
@@ -1671,7 +1662,6 @@ class Builder(
     AnnotationBuilder,
     RelationshipBuilder,
 ):
-
     """
     SPDX document builder.
     """
@@ -1709,7 +1699,6 @@ class Builder(
 
     def has_current_package(self) -> bool:
         return bool(self.current_package)
-
 
     def reset(self):
         """

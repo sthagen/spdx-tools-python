@@ -16,7 +16,7 @@ import unittest
 from datetime import datetime
 from unittest import TestCase
 
-from spdx.checksum import Algorithm
+from spdx.checksum import Checksum, ChecksumAlgorithm
 from spdx.config import LICENSE_MAP, EXCEPTION_MAP
 from spdx.creationinfo import Tool
 from spdx.document import Document, ExternalDocumentRef
@@ -65,26 +65,26 @@ class TestDocument(TestCase):
         document.add_ext_document_reference(
             ExternalDocumentRef('DocumentRef-spdx-tool-2.1',
                                 'https://spdx.org/spdxdocs/spdx-tools-v2.1-3F2504E0-4F89-41D3-9A0C-0305E82C3301',
-                                Algorithm('SHA1', 'SOME-SHA1'))
+                                Checksum(ChecksumAlgorithm.SHA1, 'SOME-SHA1'))
         )
         assert document.comment is None
         assert document.version == Version(2, 1)
         assert document.data_license.identifier == 'AFL-1.1'
         assert document.ext_document_references[-1].external_document_id == 'DocumentRef-spdx-tool-2.1'
         assert document.ext_document_references[-1].spdx_document_uri == 'https://spdx.org/spdxdocs/spdx-tools-v2.1-3F2504E0-4F89-41D3-9A0C-0305E82C3301'
-        assert document.ext_document_references[-1].check_sum.identifier == 'SHA1'
-        assert document.ext_document_references[-1].check_sum.value == 'SOME-SHA1'
+        assert document.ext_document_references[-1].checksum.identifier.name == 'SHA1'
+        assert document.ext_document_references[-1].checksum.value == 'SOME-SHA1'
 
     def test_document_validate_failures_returns_informative_messages(self):
         doc = Document(Version(2, 1), License.from_identifier('CC0-1.0'),
                        'Sample_Document-V2.1', spdx_id='SPDXRef-DOCUMENT',
                        namespace='https://spdx.org/spdxdocs/spdx-example-444504E0-4F89-41D3-9A0C-0305E82C3301')
         pack = doc.package = Package('some/path', NoAssert())
-        pack.checksum = 'SOME-SHA1'
+        pack.set_checksum(Checksum(ChecksumAlgorithm.SHA256, 'SOME-SHA256'))
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
-        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.set_checksum(Checksum(ChecksumAlgorithm.SHA1, 'SOME-SHA1'))
         lic1 = License.from_identifier('LGPL-2.1-only')
         file1.add_lics(lic1)
         pack.add_lics_from_file(lic1)
@@ -92,8 +92,6 @@ class TestDocument(TestCase):
         messages = doc.validate(messages)
         expected = ['Sample_Document-V2.1: Creation info missing created date.',
                     'Sample_Document-V2.1: No creators defined, must have at least one.',
-                    'Sample_Document-V2.1: some/path: Package checksum must be instance of '
-                    'spdx.checksum.Algorithm',
                     'Sample_Document-V2.1: some/path: Package download_location can not be None.']
         assert sorted(expected) == sorted(messages)
 
@@ -107,6 +105,7 @@ class TestDocument(TestCase):
         package = doc.package = Package(name='some/path', download_location=NoAssert())
         package.spdx_id = 'SPDXRef-Package'
         package.cr_text = 'Some copyright'
+        package.set_checksum(Checksum(ChecksumAlgorithm.SHA1, 'SOME-SHA1'))
         package.verif_code = 'SOME code'
         package.license_declared = NoAssert()
         package.conc_lics = NoAssert()
@@ -115,7 +114,7 @@ class TestDocument(TestCase):
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
         file1.file_types = [FileType.OTHER]
-        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.set_checksum(Checksum(ChecksumAlgorithm.SHA1, 'SOME-SHA1'))
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
 
@@ -125,7 +124,7 @@ class TestDocument(TestCase):
         package.add_lics_from_file(lic1)
         doc.add_file(file1)
         relationship = create_relationship(package.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
         messages = ErrorMessages()
         messages = doc.validate(messages)
         assert not messages
@@ -179,7 +178,8 @@ class TestWriters(TestCase):
         package.spdx_id = 'SPDXRef-Package'
         package.cr_text = 'Some copyright'
         package.verif_code = 'SOME code'
-        package.checksum = Algorithm('SHA1', 'SOME-SHA1')
+        package.set_checksum(Checksum(ChecksumAlgorithm.SHA1, 'SOME-SHA1'))
+        package.set_checksum(Checksum(ChecksumAlgorithm.SHA256, 'SOME-SHA256'))
         package.license_declared = NoAssert()
         package.conc_lics = NoAssert()
         package.primary_package_purpose = PackagePurpose.FILE
@@ -191,7 +191,8 @@ class TestWriters(TestCase):
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
-        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.set_checksum(Checksum(ChecksumAlgorithm.SHA1, 'SOME-SHA1'))
+        file1.set_checksum(Checksum(ChecksumAlgorithm.SHA256, 'SOME-SHA256'))
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
         file1.file_types = [FileType.OTHER, FileType.SOURCE]
@@ -205,9 +206,9 @@ class TestWriters(TestCase):
 
         package.add_lics_from_file(lic1)
         relationship = create_relationship(package.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
         relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
         return doc
 
     def _get_lgpl_multi_package_doc(self, or_later=False):
@@ -245,7 +246,7 @@ class TestWriters(TestCase):
         file1 = File('./some/path/tofile')
         file1.name = './some/path/tofile'
         file1.spdx_id = 'SPDXRef-File'
-        file1.chksum = Algorithm('SHA1', 'SOME-SHA1')
+        file1.set_checksum(Checksum(ChecksumAlgorithm.SHA1, 'SOME-SHA1'))
         file1.conc_lics = NoAssert()
         file1.copyright = NoAssert()
 
@@ -263,15 +264,15 @@ class TestWriters(TestCase):
         doc.add_file(file1)
 
         relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package1.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
         relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package2.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
         relationship = create_relationship(doc.spdx_id, RelationshipType.DESCRIBES, package3.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
         relationship = create_relationship(package2.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
         relationship = create_relationship(package3.spdx_id, RelationshipType.CONTAINS, file1.spdx_id)
-        doc.add_relationships(relationship)
+        doc.add_relationship(relationship)
 
         return doc
 

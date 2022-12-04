@@ -20,6 +20,7 @@ from spdx.package import Package
 from spdx.parsers.loggers import ErrorMessages
 from spdx.relationship import Relationship
 from spdx.snippet import Snippet
+from spdx.version import Version
 
 
 class InvalidDocumentError(Exception):
@@ -124,7 +125,8 @@ def write_file(spdx_file, out):
         write_value("SPDXID", spdx_file.spdx_id, out)
     for file_type in spdx_file.file_types:
         write_file_type(file_type.name, out)
-    write_value("FileChecksum", spdx_file.chksum.to_tv(), out)
+    for file_checksum in spdx_file.checksums.values():
+        write_value("FileChecksum", file_checksum.to_tv(), out)
     if spdx_file.has_optional_field("conc_lics"):
         if isinstance(
             spdx_file.conc_lics, (license.LicenseConjunction, license.LicenseDisjunction)
@@ -239,8 +241,8 @@ def write_package(package, out):
     if package.has_optional_field("originator"):
         write_value("PackageOriginator", package.originator, out)
 
-    if package.has_optional_field("checksum"):
-        write_value("PackageChecksum", package.checksum.to_tv(), out)
+    for package_checksum in package.checksums.values():
+        write_value("PackageChecksum", package_checksum.to_tv(), out)
 
     if package.has_optional_field("verif_code"):
         write_value("PackageVerificationCode", format_verif_code(package), out)
@@ -346,8 +348,9 @@ def write_document(document, out, validate=True):
         write_value("DocumentNamespace", document.namespace, out)
     if document.name:
         write_value("DocumentName", document.name, out)
-    if document.license_list_version:
-        write_value("LicenseListVersion", str(document.license_list_version), out)
+    if document.creation_info.license_list_version:
+        version: Version = document.creation_info.license_list_version
+        write_value("LicenseListVersion", str(version.major) + "." + str(version.minor), out)
     write_value("SPDXID", "SPDXRef-DOCUMENT", out)
     if document.has_comment:
         write_text_value("DocumentComment", document.comment, out)
@@ -356,7 +359,7 @@ def write_document(document, out, validate=True):
             [
                 doc_ref.external_document_id,
                 doc_ref.spdx_document_uri,
-                doc_ref.check_sum.identifier + ":" + doc_ref.check_sum.value,
+                doc_ref.checksum.identifier.name + ": " + doc_ref.checksum.value,
             ]
         )
         write_value("ExternalDocumentRef", doc_ref_str, out)

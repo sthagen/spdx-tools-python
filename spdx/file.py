@@ -10,13 +10,15 @@
 # limitations under the License.
 
 from enum import Enum, auto
+import warnings
 from functools import total_ordering
 import hashlib
 
-from spdx import checksum
-from spdx import utils
 from spdx.license import License
+from spdx import utils
+from spdx.checksum import Checksum, ChecksumAlgorithm
 from spdx.parsers.builderexceptions import SPDXValueError
+from spdx.parsers.loggers import ErrorMessages
 
 
 class FileType(Enum):
@@ -58,7 +60,8 @@ class File(object):
     referenced by other elements. Mandatory, one. Type: str.
     - comment: File comment str, Optional zero or one.
     - file_types: list of file types. Cardinality 0..*
-    - chksum: SHA1, Mandatory one.
+    - checksums: Dict with checksum.ChecksumAlgorithm as key and checksum.Checksum as value,
+    there must be a SHA1 hash, at least.
     - conc_lics: Mandatory one. license.License or utils.NoAssert or utils.SPDXNone.
     - licenses_in_file: list of licenses found in file, mandatory one or more.
       document.License or utils.SPDXNone or utils.NoAssert.
@@ -74,12 +77,12 @@ class File(object):
     -attribution_text: optional string.
     """
 
-    def __init__(self, name, spdx_id=None, chksum=None):
+    def __init__(self, name, spdx_id=None):
         self.name = name
         self.spdx_id = spdx_id
         self.comment = None
         self.file_types = []
-        self.checksums = [chksum]
+        self.checksums = {}
         self.conc_lics = None
         self.licenses_in_file = []
         self.license_comment = None
@@ -99,16 +102,23 @@ class File(object):
         return self.name < other.name
 
     @property
-    def chksum(self):
+    def checksum(self):
         """
-        Backwards compatibility, return first checksum.
+        Backwards compatibility, return SHA1 checksum.
         """
-        # NOTE Package.check_sum but File.chk_sum
-        return self.checksums[0]
+        warnings.warn("This property is deprecated. Use get_checksum instead.")
+        return self.get_checksum(ChecksumAlgorithm.SHA1)
 
-    @chksum.setter
-    def chksum(self, value):
-        self.checksums[0] = value
+    @checksum.setter
+    def checksum(self, value):
+        """
+        Backwards compatibility, set checksum.
+        """
+        warnings.warn("This property is deprecated. Use set_checksum instead.")
+        if isinstance(value, str):
+            self.set_checksum(Checksum("SHA1", value))
+        elif isinstance(value, Checksum):
+            self.set_checksum(value)
 
     def add_lics(self, lics):
         self.licenses_in_file.append(lics)
@@ -135,7 +145,7 @@ class File(object):
         messages.push_context(self.name)
         self.validate_concluded_license(messages)
         self.validate_file_types(messages)
-        self.validate_checksum(messages)
+        self.validate_checksums(messages)
         self.validate_licenses_in_file(messages)
         self.validate_copyright(messages)
         self.validate_artifacts(messages)
@@ -202,29 +212,37 @@ class File(object):
                 messages.append(f"{file_type} is not of type FileType.")
         return messages
 
-    def validate_checksum(self, messages):
-        if not isinstance(self.chksum, checksum.Algorithm):
-            messages.append(
-                "File checksum must be instance of spdx.checksum.Algorithm"
-            )
-        else:
-            if not self.chksum.identifier == "SHA1":
-                messages.append("File checksum algorithm must be SHA1")
+    def validate_checksums(self, messages: ErrorMessages):
+        for checksum in self.checksums.values():
+            if not isinstance(checksum, Checksum):
+                messages.append("File checksum must be instance of spdx.checksum.Checksum.")
 
-        return messages
+        if self.get_checksum(ChecksumAlgorithm.SHA1) is None:
+            messages.append("At least one file checksum algorithm must be SHA1")
 
-    def calc_chksum(self):
+    def calculate_checksum(self, hash_algorithm='SHA1'):
+        if hash_algorithm not in ChecksumAlgorithm.__members__:
+            raise ValueError
         BUFFER_SIZE = 65536
 
-        file_sha1 = hashlib.sha1()
+        file_hash = hashlib.new(hash_algorithm.lower())
         with open(self.name, "rb") as file_handle:
             while True:
                 data = file_handle.read(BUFFER_SIZE)
                 if not data:
                     break
-                file_sha1.update(data)
+                file_hash.update(data)
 
-        return file_sha1.hexdigest()
+        return file_hash.hexdigest()
+
+    def get_checksum(self, hash_algorithm: ChecksumAlgorithm = ChecksumAlgorithm.SHA1) -> Checksum:
+        return self.checksums[hash_algorithm]
+
+    def set_checksum(self, new_checksum: Checksum):
+        if not isinstance(new_checksum, Checksum):
+            raise SPDXValueError
+
+        self.checksums[new_checksum.identifier] = new_checksum
 
     def has_optional_field(self, field):
-        return bool (getattr(self, field, None))
+        return bool(getattr(self, field, None))
