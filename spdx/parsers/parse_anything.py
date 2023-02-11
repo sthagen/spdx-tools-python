@@ -21,10 +21,11 @@ from spdx.parsers import jsonyamlxmlbuilders, tagvaluebuilders, rdfbuilders
 from spdx.parsers.builderexceptions import FileTypeError
 
 
-def parse_file(fn):
+def parse_file(fn, encoding="utf-8"):
     builder_module = jsonyamlxmlbuilders
     read_data = False
     if fn.endswith(".rdf") or fn.endswith(".rdf.xml"):
+        encoding = None
         parsing_module = rdf
         builder_module = rdfbuilders
     elif fn.endswith(".tag") or fn.endswith(".spdx"):
@@ -43,7 +44,7 @@ def parse_file(fn):
     p = parsing_module.Parser(builder_module.Builder(), StandardLogger())
     if hasattr(p, "build"):
         p.build()
-    with open(fn) as f:
+    with open(fn, "r", encoding=encoding) as f:
         if read_data:
             data = f.read()
             return p.parse(data)

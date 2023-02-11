@@ -18,11 +18,12 @@ from spdx.writers import tagvalue
 from spdx.parsers.builderexceptions import FileTypeError
 
 
-def write_file(doc, fn, validate=True):
+def write_file(doc, fn, validate=True, encoding="utf-8"):
     out_mode = "w"
     if fn.endswith(".rdf") or fn.endswith(".rdf.xml"):
         writer_module = rdf
         out_mode = "wb"
+        encoding = None
     elif fn.endswith(".tag") or fn.endswith(".spdx"):
         writer_module = tagvalue
     elif fn.endswith(".json"):
@@ -34,5 +35,5 @@ def write_file(doc, fn, validate=True):
     else:
         raise FileTypeError("FileType Not Supported")
 
-    with open(fn, out_mode) as out:
+    with open(fn, out_mode, encoding=encoding) as out:
         p = writer_module.write_document(doc, out, validate)
