@@ -37,6 +37,8 @@ ERROR_MESSAGES = {
     "DOC_VERSION_VALUE_TYPE": "Invalid SPDXVersion value, must be SPDX-M.N where M and N are numbers. Line: {0}",
     "DOC_NAME_VALUE": "DocumentName must be single line of text, line: {0}",
     "DOC_SPDX_ID_VALUE": "Invalid SPDXID value, SPDXID must be SPDXRef-DOCUMENT, line: {0}",
+    "LIC_LIST_VER_VALUE": "Invalid LicenseListVersion '{0}', must be of type M.N where M and N are numbers. Line: {1}",
+    "LIC_LIST_VER_VALUE_TYPE": "Could not read value after LicenseListVersion-tag. Line{0}",
     "EXT_DOC_REF_VALUE": "ExternalDocumentRef must contain External Document ID, SPDX Document URI and Checksum"
                          "in the standard format, line:{0}.",
     "DOC_COMMENT_VALUE_TYPE": "DocumentComment value must be free form text between <text></text> tags"
@@ -1391,9 +1393,9 @@ class Parser(object):
         self.logger.log(msg)
 
     def p_snippet_byte_range(self, p):
-        """snip_byte_range : SNIPPET_BYTE_RANGE RANGE"""
+        """snip_byte_range : SNIPPET_BYTE_RANGE LINE"""
         try:
-            self.builder.set_snippet_byte_range(self.document, p[2])
+            self.builder.set_snippet_byte_range(self.document, p[2].strip())
         except OrderError:
             self.order_error("SnippetByteRange", "SnippetSPDXID", p.lineno(1))
         except SPDXValueError:
@@ -1409,9 +1411,9 @@ class Parser(object):
         self.logger.log(msg)
 
     def p_snippet_line_range(self, p):
-        """snip_line_range : SNIPPET_LINE_RANGE RANGE"""
+        """snip_line_range : SNIPPET_LINE_RANGE LINE"""
         try:
-            self.builder.set_snippet_line_range(self.document, p[2])
+            self.builder.set_snippet_line_range(self.document, p[2].strip())
         except OrderError:
             self.order_error("SnippetLineRange", "SnippetSPDXID", p.lineno(1))
         except SPDXValueError:

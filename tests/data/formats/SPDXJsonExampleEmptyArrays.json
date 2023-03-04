@@ -15,34 +15,15 @@
       "description" : "Coverlet is a cross platform code coverage library for .NET, with support for line, branch and method coverage.",
       "downloadLocation" : "https://api.nuget.org/packages/coverlet.collector.3.2.0.nupkg",
       "filesAnalyzed" : false,
-      "hasFiles" : [ ],
+      "hasFiles" : [],
       "homepage" : "https://github.com/coverlet-coverage/coverlet",
       "licenseConcluded" : "(MIT)",
       "licenseDeclared" : "(MIT)",
-      "licenseInfoFromFiles" : [ ],
+      "licenseInfoFromFiles" : [],
       "name" : "coverlet.collector.3.2.0.nupkg",
       "originator" : "Organization: tonerdo",
       "packageFileName" : "coverlet.collector.3.2.0.nupkg",
-      "supplier" : "Organization: tonerdo",
-      "versionInfo" : "3.2.0"
-    },
-    {
-      "SPDXID" : "SPDXRef-2269-coverlet.collector.3.2.0.nupkg",
-      "checksums" : [ {
-        "algorithm" : "SHA1",
-        "checksumValue" : "0cf7564fcbdee13f6313edd8bc261ca0564a4bf7"
-      } ],
-      "copyrightText" : "NOASSERTION",
-      "description" : "Coverlet is a cross platform code coverage library for .NET, with support for line, branch and method coverage.",
-      "downloadLocation" : "https://api.nuget.org/packages/coverlet.collector.3.2.0.nupkg",
-      "filesAnalyzed" : false,
-      "homepage" : "https://github.com/coverlet-coverage/coverlet",
-      "licenseConcluded" : "(MIT)",
-      "licenseDeclared" : "(MIT)",
-      "name" : "coverlet.collector.3.2.0.nupkg",
-      "originator" : "Organization: tonerdo",
-      "packageFileName" : "coverlet.collector.3.2.0.nupkg",
-      "supplier" : "Organization: tonerdo",
+      "supplier" : "NOASSERTION",
       "versionInfo" : "3.2.0"
     }
   ],
@@ -53,7 +34,7 @@
       "Person: Gary O'Neall",
       "Organization: Source Auditor Inc."
     ],
-    "licenseListVersion": "3.6",
+    "licenseListVersion": "3.20",
     "created": "2010-02-03T00:00:00Z"
   },
   "documentNamespace": "https://spdx.org/spdxdocs/spdx-example-444504E0-4F89-41D3-9A0C-0305E82C3301",

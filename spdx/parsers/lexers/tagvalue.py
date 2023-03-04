@@ -137,7 +137,6 @@ class Lexer(object):
         "PERSON_VALUE",
         "DATE",
         "LINE",
-        "RANGE",
         "CHKSUM",
         "DOC_REF_ID",
         "DOC_URI",
@@ -219,9 +218,6 @@ class Lexer(object):
         if t.value in self.reserved.keys():
             t.type = self.reserved[t.value]
             return t
-        range_pattern = re.compile("\d+:\d(?!\D)")
-        if range_pattern.match(t.value):
-            t.type = "RANGE"
         else:
             t.type = "LINE"
         return t
@@ -235,7 +231,7 @@ class Lexer(object):
         t.lexer.lineno += len(t.value)
 
     def t_whitespace(self, t):
-        r"\s+"
+        r"[ \t]+"
         pass
 
     def build(self, **kwargs):

@@ -50,7 +50,7 @@ review_str = '\n'.join([
 package_str = '\n'.join([
     'PackageName: Test',
     'SPDXID: SPDXRef-Package',
-    'PackageVersion: 1:2.36.1-8+deb11u1',
+    'PackageVersion: 1:22.36.1-8+deb11u1',
     'PackageDownloadLocation: http://example.com/test',
     'FilesAnalyzed: True',
     'PackageSummary: <text>Test package</text>',
@@ -103,7 +103,7 @@ snippet_str = '\n'.join([
     'SnippetFromFileSPDXID: SPDXRef-DoapSource',
     'SnippetLicenseConcluded: Apache-2.0',
     'LicenseInfoInSnippet: Apache-2.0',
-    'SnippetByteRange: 310:420',
+    'SnippetByteRange: 310:420  ',
     'SnippetLineRange: 5:7',
 ])
 
@@ -114,6 +114,9 @@ annotation_str = '\n'.join([
     'AnnotationType: OTHER',
     'SPDXREF: SPDXRef-DOCUMENT'
 ])
+
+document_str_with_empty_line = "\n".join(
+    ['SPDXVersion: SPDX-2.1', '  ', 'DataLicense: CC0-1.0'])
 
 
 class TestLexer(TestCase):
@@ -195,7 +198,7 @@ class TestLexer(TestCase):
         self.token_assert_helper(self.l.token(), 'SPDX_ID', 'SPDXID', 2)
         self.token_assert_helper(self.l.token(), 'LINE', 'SPDXRef-Package', 2)
         self.token_assert_helper(self.l.token(), 'PKG_VERSION', 'PackageVersion', 3)
-        self.token_assert_helper(self.l.token(), 'LINE', '1:2.36.1-8+deb11u1', 3)
+        self.token_assert_helper(self.l.token(), 'LINE', '1:22.36.1-8+deb11u1', 3)
         self.token_assert_helper(self.l.token(), 'PKG_DOWN', 'PackageDownloadLocation', 4)
         self.token_assert_helper(self.l.token(), 'LINE', 'http://example.com/test', 4)
         self.token_assert_helper(self.l.token(), 'PKG_FILES_ANALYZED', 'FilesAnalyzed', 5)
@@ -273,9 +276,9 @@ class TestLexer(TestCase):
                                  'LicenseInfoInSnippet', 8)
         self.token_assert_helper(self.l.token(), 'LINE', 'Apache-2.0', 8)
         self.token_assert_helper(self.l.token(), 'SNIPPET_BYTE_RANGE', 'SnippetByteRange', 9)
-        self.token_assert_helper(self.l.token(), 'RANGE', '310:420', 9)
+        self.token_assert_helper(self.l.token(), 'LINE', '310:420', 9)
         self.token_assert_helper(self.l.token(), 'SNIPPET_LINE_RANGE', 'SnippetLineRange', 10)
-        self.token_assert_helper(self.l.token(), 'RANGE', '5:7', 10)
+        self.token_assert_helper(self.l.token(), 'LINE', '5:7', 10)
 
     def test_annotation(self):
         data = annotation_str
@@ -290,6 +293,14 @@ class TestLexer(TestCase):
         self.token_assert_helper(self.l.token(), 'OTHER', 'OTHER', 4)
         self.token_assert_helper(self.l.token(), 'ANNOTATION_SPDX_ID', 'SPDXREF', 5)
         self.token_assert_helper(self.l.token(), 'LINE', 'SPDXRef-DOCUMENT', 5)
+
+    def test_correct_line_number_with_empty_line_between(self):
+        data = document_str_with_empty_line
+        self.l.input(data)
+        self.token_assert_helper(self.l.token(), 'DOC_VERSION', 'SPDXVersion', 1)
+        self.token_assert_helper(self.l.token(), 'LINE', 'SPDX-2.1', 1)
+        self.token_assert_helper(self.l.token(), 'DOC_LICENSE', 'DataLicense', 3)
+        self.token_assert_helper(self.l.token(), 'LINE', 'CC0-1.0', 3)
 
     def token_assert_helper(self, token, ttype, value, line):
         assert token.type == ttype
@@ -337,7 +348,7 @@ class TestParser(TestCase):
         assert not error
         assert document.package.name == 'Test'
         assert document.package.spdx_id == 'SPDXRef-Package'
-        assert document.package.version == '1:2.36.1-8+deb11u1'
+        assert document.package.version == '1:22.36.1-8+deb11u1'
         assert len(document.package.licenses_from_files) == 2
         assert (document.package.conc_lics.identifier == 'LicenseRef-2.0 AND Apache-2.0')
         assert document.package.files_analyzed is True
