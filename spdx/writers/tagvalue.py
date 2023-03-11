@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Ahmed H. Ismail
+# SPDX-License-Identifier: Apache-2.0
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -135,8 +136,11 @@ def write_file(spdx_file, out):
         else:
             write_value("LicenseConcluded", spdx_file.conc_lics, out)
 
+    # remove duplicates
+    lics_in_file = []
+    [lics_in_file.append(x) for x in spdx_file.licenses_in_file if x not in lics_in_file]
     # write sorted list
-    for lics in sorted(spdx_file.licenses_in_file):
+    for lics in sorted(lics_in_file):
         write_value("LicenseInfoInFile", lics, out)
 
     if spdx_file.has_optional_field("copyright"):

@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Ahmed H. Ismail
+# SPDX-License-Identifier: Apache-2.0
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -792,18 +793,9 @@ class PackageWriter(LicenseWriter):
         Return a Node representing the package.
         Files must have been added to the graph before this method is called.
         """
-        package_node = URIRef("http://www.spdx.org/tools#SPDXRef-Package")
+        package_node = URIRef(f"http://www.spdx.org/tools#{package.spdx_id}")
         type_triple = (package_node, RDF.type, self.spdx_namespace.Package)
         self.graph.add(type_triple)
-        # Package SPDXID
-        if package.spdx_id:
-            pkg_spdx_id = URIRef(package.spdx_id)
-            pkg_spdx_id_triple = (
-                package_node,
-                self.spdx_namespace.Package,
-                pkg_spdx_id,
-            )
-            self.graph.add(pkg_spdx_id_triple)
         # Handle optional fields:
         self.handle_pkg_optional_fields(package, package_node)
         # package name
