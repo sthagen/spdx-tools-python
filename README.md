@@ -64,7 +64,7 @@ instead of `bin`.
 * Use `pyspdxtools -i <filename>` where `<filename>` is the location of the file. The input format is inferred automatically from the file ending.
 
 * If you are using a source distribution, try running:  
-  `pyspdxtools -i tests/data/formats/SPDXJSONExample-v2.3.spdx.json`
+  `pyspdxtools -i tests/data/SPDXJSONExample-v2.3.spdx.json`
 
 2. **CONVERTING** (for converting one format to another):
 
@@ -72,10 +72,10 @@ instead of `bin`.
   and `<output_file>` is the location of the output file. The input and output formats are inferred automatically from the file endings.
 
 * If you are using a source distribution, try running:  
-  `pyspdxtools -i tests/data/formats/SPDXJSONExample-v2.3.spdx.json -o output.tag` 
+  `pyspdxtools -i tests/data/SPDXJSONExample-v2.3.spdx.json -o output.tag` 
 
 * If you want to skip the validation process, provide the `--novalidation` flag, like so:  
-  `pyspdxtools -i tests/data/formats/SPDXJSONExample-v2.3.spdx.json -o output.tag --novalidation`  
+  `pyspdxtools -i tests/data/SPDXJSONExample-v2.3.spdx.json -o output.tag --novalidation`  
   (use this with caution: note that undetected invalid documents may lead to unexpected behavior of the tool)
   
 * For help use `pyspdxtools --help`
@@ -83,13 +83,13 @@ instead of `bin`.
 3. **GRAPH GENERATION** (optional feature)
 
 * This feature generates a graph representing all elements in the SPDX document and their connections based on the provided
-  relationships. The graph can be rendered to a picture. Below is an example for the file `tests/data/formats/SPDXJSONExample-v2.3.spdx.json`:
+  relationships. The graph can be rendered to a picture. Below is an example for the file `tests/data/SPDXJSONExample-v2.3.spdx.json`:
 ![SPDXJSONExample-v2.3.spdx.png](assets/SPDXJSONExample-v2.3.spdx.png)
 * Make sure you install the optional dependencies `networkx` and `pygraphviz`. To do so run `pip install ".[graph_generation]"`.
 * Use `pyspdxtools -i <input_file> --graph -o <output_file>` where `<output_file>` is an output file name with valid format for `pygraphviz` (check 
   the documentation [here](https://pygraphviz.github.io/documentation/stable/reference/agraph.html#pygraphviz.AGraph.draw)). 
 * If you are using a source distribution, try running
-  `pyspdxtools -i tests/data/formats/SPDXJSONExample-v2.3.spdx.json --graph -o SPDXJSONExample-v2.3.spdx.png` to generate 
+  `pyspdxtools -i tests/data/SPDXJSONExample-v2.3.spdx.json --graph -o SPDXJSONExample-v2.3.spdx.png` to generate 
   a png with an overview of the structure of the example file.  
 
 ## Library usage
@@ -102,7 +102,7 @@ instead of `bin`.
     * Note: in-place manipulations like `list.append(item)` will circumvent the type checking (a `TypeError` will still be raised when reading `list` again). We recommend using `list = list + [item]` instead.
   * The main entry point of an SPDX document is the `Document` class, which links to all other classes.
   * For license handling, the [license_expression](https://github.com/nexB/license-expression) library is used.
-  * Note on `documentDescribes` and `hasFiles`: These fields will be converted to relationships in the internal data model. During serialization, they will be written again where appropriate.
+  * Note on `documentDescribes` and `hasFiles`: These fields will be converted to relationships in the internal data model. As they are deprecated, these fields will not be written in the output.
 2. **PARSING**
   * Use `parse_file(file_name)` from the `parse_anything.py` module to parse an arbitrary file with one of the supported file endings.
   * Successful parsing will return a `Document` instance. Unsuccessful parsing will raise `SPDXParsingError` with a list of all encountered problems.

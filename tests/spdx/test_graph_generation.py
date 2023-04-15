@@ -15,7 +15,6 @@ from tests.spdx.fixtures import document_fixture, file_fixture, package_fixture
 
 try:
     import networkx  # noqa: F401
-    import pygraphviz  # noqa: F401
 except ImportError:
     pytest.skip("Skip this module as the tests need optional dependencies to run.", allow_module_level=True)
 
@@ -44,7 +43,7 @@ except ImportError:
         (
             "SPDXRdfExample-v2.2.spdx.rdf.xml",
             20,
-            17,
+            19,
             ["SPDXRef-Package_DYNAMIC_LINK", "SPDXRef-JenaLib_CONTAINS"],
         ),
         (
@@ -61,7 +60,7 @@ def test_generate_graph_from_spdx(
     edges_count: int,
     relationship_node_keys: List[str],
 ) -> None:
-    document = parse_file(str(Path(__file__).resolve().parent.parent / "spdx" / "data" / "formats" / file_name))
+    document = parse_file(str(Path(__file__).resolve().parent.parent / "spdx" / "data" / file_name))
     graph = generate_relationship_graph_from_spdx(document)
 
     assert document.creation_info.spdx_id in graph.nodes()
