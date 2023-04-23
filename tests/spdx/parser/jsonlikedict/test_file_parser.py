@@ -6,15 +6,21 @@ from unittest import TestCase
 import pytest
 from license_expression import Licensing
 
-from spdx.model.checksum import Checksum, ChecksumAlgorithm
-from spdx.model.file import FileType
-from spdx.model.spdx_no_assertion import SpdxNoAssertion
-from spdx.parser.error import SPDXParsingError
-from spdx.parser.jsonlikedict.dict_parsing_functions import parse_list_of_elements
-from spdx.parser.jsonlikedict.file_parser import FileParser
+from spdx_tools.spdx.model import Checksum, ChecksumAlgorithm, FileType, SpdxNoAssertion, SpdxNone
+from spdx_tools.spdx.parser.error import SPDXParsingError
+from spdx_tools.spdx.parser.jsonlikedict.dict_parsing_functions import parse_list_of_elements
+from spdx_tools.spdx.parser.jsonlikedict.file_parser import FileParser
 
 
-def test_parse_file():
+@pytest.mark.parametrize(
+    "copyright_text, expected_copyright_text",
+    [
+        ("Copyright 2008-2010 John Smith", "Copyright 2008-2010 John Smith"),
+        ("NOASSERTION", SpdxNoAssertion()),
+        ("NONE", SpdxNone()),
+    ],
+)
+def test_parse_file(copyright_text, expected_copyright_text):
     file_parser = FileParser()
     file_dict = {
         "SPDXID": "SPDXRef-File",
@@ -25,7 +31,7 @@ def test_parse_file():
         ],
         "comment": "The concluded license was taken from the package level that the file was included in.\nThis "
         "information was found in the COPYING.txt file in the xyz directory.",
-        "copyrightText": "Copyright 2008-2010 John Smith",
+        "copyrightText": copyright_text,
         "fileContributors": [
             "The Regents of the University of California",
             "Modified by Paul Mundt lethal@linux-sh.org",
@@ -66,7 +72,7 @@ def test_parse_file():
         == "The concluded license was taken from the package level that the file was included in.\nThis information "
         "was found in the COPYING.txt file in the xyz directory."
     )
-    assert file.copyright_text == "Copyright 2008-2010 John Smith"
+    assert file.copyright_text == expected_copyright_text
     assert file.file_types == [FileType.SOURCE]
     TestCase().assertCountEqual(
         file.contributors,

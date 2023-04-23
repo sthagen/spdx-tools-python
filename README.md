@@ -94,13 +94,13 @@ instead of `bin`.
 
 ## Library usage
 1. **DATA MODEL**
-  * The `src.spdx.model` package constitutes the internal SPDX v2.3 data model (v2.2 is a simply a subset of this).
+  * The `spdx_tools.spdx.model` package constitutes the internal SPDX v2.3 data model (v2.2 is simply a subset of this). All relevant classes for SPDX document creation are exposed in the `__init__.py` found [here](src%2Fspdx_tools%2Fspdx%2Fmodel%2F__init__.py).
   * SPDX objects are implemented via `@dataclass_with_properties`, a custom extension of `@dataclass`.
     * Each class starts with a list of its properties and their possible types. When no default value is provided, the property is mandatory and must be set during initialization.
     * Using the type hints, type checking is enforced when initializing a new instance or setting/getting a property on an instance
       (wrong types will raise `ConstructorTypeError` or `TypeError`, respectively). This makes it easy to catch invalid properties early and only construct valid documents.
     * Note: in-place manipulations like `list.append(item)` will circumvent the type checking (a `TypeError` will still be raised when reading `list` again). We recommend using `list = list + [item]` instead.
-  * The main entry point of an SPDX document is the `Document` class, which links to all other classes.
+  * The main entry point of an SPDX document is the `Document` class from the [document.py](src%2Fspdx_tools%2Fspdx%2Fmodel%2Fdocument.py) module, which links to all other classes.
   * For license handling, the [license_expression](https://github.com/nexB/license-expression) library is used.
   * Note on `documentDescribes` and `hasFiles`: These fields will be converted to relationships in the internal data model. As they are deprecated, these fields will not be written in the output.
 2. **PARSING**
@@ -117,8 +117,19 @@ instead of `bin`.
     Caution: Only valid documents can be serialized reliably; serialization of invalid documents is not supported.
 
 ## Example
-Here are some examples of possible use cases to quickly get you started with the spdx-tools:
+Here are some examples of possible use cases to quickly get you started with the spdx-tools.
+If you want a more comprehensive example about how to create an SPDX document from scratch, have a look [here](examples%2Fspdx2_document_from_scratch.py).
 ```python
+import logging
+
+from license_expression import get_spdx_licensing
+
+from spdx_tools.spdx.model import (Checksum, ChecksumAlgorithm, File, 
+                                   FileType, Relationship, RelationshipType)
+from spdx_tools.spdx.parser.parse_anything import parse_file
+from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
+from spdx_tools.spdx.writer.write_anything import write_file
+
 # read in an SPDX document from a file
 document = parse_file("spdx_document.json")
 

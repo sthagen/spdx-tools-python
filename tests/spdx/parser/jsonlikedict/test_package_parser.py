@@ -7,16 +7,77 @@ from unittest import TestCase
 import pytest
 from license_expression import Licensing
 
-from spdx.model.actor import Actor, ActorType
-from spdx.model.checksum import Checksum, ChecksumAlgorithm
-from spdx.model.package import ExternalPackageRef, ExternalPackageRefCategory, PackagePurpose, PackageVerificationCode
-from spdx.model.spdx_no_assertion import SpdxNoAssertion
-from spdx.parser.error import SPDXParsingError
-from spdx.parser.jsonlikedict.dict_parsing_functions import parse_list_of_elements
-from spdx.parser.jsonlikedict.package_parser import PackageParser
+from spdx_tools.spdx.model import (
+    Actor,
+    ActorType,
+    Checksum,
+    ChecksumAlgorithm,
+    ExternalPackageRef,
+    ExternalPackageRefCategory,
+    PackagePurpose,
+    PackageVerificationCode,
+    SpdxNoAssertion,
+    SpdxNone,
+)
+from spdx_tools.spdx.parser.error import SPDXParsingError
+from spdx_tools.spdx.parser.jsonlikedict.dict_parsing_functions import parse_list_of_elements
+from spdx_tools.spdx.parser.jsonlikedict.package_parser import PackageParser
 
 
-def test_parse_package():
+@pytest.mark.parametrize(
+    "homepage, expected_homepage, download_location, expected_download_location, "
+    "copyright_text, expected_copyright_text, originator, expected_originator, supplier, expected_supplier",
+    [
+        (
+            "http://ftp.gnu.org/gnu/glibc",
+            "http://ftp.gnu.org/gnu/glibc",
+            "NOASSERTION",
+            SpdxNoAssertion(),
+            "NONE",
+            SpdxNone(),
+            "Organization: ExampleCodeInspect (contact@example.com)",
+            Actor(ActorType.ORGANIZATION, "ExampleCodeInspect", "contact@example.com"),
+            "NOASSERTION",
+            SpdxNoAssertion(),
+        ),
+        (
+            "NOASSERTION",
+            SpdxNoAssertion(),
+            "NONE",
+            SpdxNone(),
+            "Copyright 2008-2010 John Smith",
+            "Copyright 2008-2010 John Smith",
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "NONE",
+            SpdxNone(),
+            "http://ftp.gnu.org/gnu/glibc/glibc-ports-2.15.tar.gz",
+            "http://ftp.gnu.org/gnu/glibc/glibc-ports-2.15.tar.gz",
+            "NOASSERTION",
+            SpdxNoAssertion(),
+            "NOASSERTION",
+            SpdxNoAssertion(),
+            "Person: Jane Doe (jane.doe@example.com)",
+            Actor(ActorType.PERSON, "Jane Doe", "jane.doe@example.com"),
+        ),
+    ],
+)
+def test_parse_package(
+    homepage,
+    expected_homepage,
+    download_location,
+    expected_download_location,
+    copyright_text,
+    expected_copyright_text,
+    originator,
+    expected_originator,
+    supplier,
+    expected_supplier,
+):
     package_parser = PackageParser()
 
     package_dict = {
@@ -42,11 +103,11 @@ def test_parse_package():
             },
         ],
         "comment": "This is a comment.",
-        "copyrightText": "Copyright 2008-2010 John Smith",
+        "copyrightText": copyright_text,
         "description": "The GNU C Library defines functions that are specified by the ISO C standard, as well as "
         "additional features specific to POSIX and other derivatives of the Unix operating system, and "
         "extensions specific to GNU systems.",
-        "downloadLocation": "http://ftp.gnu.org/gnu/glibc/glibc-ports-2.15.tar.gz",
+        "downloadLocation": download_location,
         "externalRefs": [
             {
                 "referenceCategory": "SECURITY",
@@ -62,14 +123,14 @@ def test_parse_package():
             },
         ],
         "filesAnalyzed": True,
-        "homepage": "http://ftp.gnu.org/gnu/glibc",
+        "homepage": homepage,
         "licenseComments": "The license for this project changed with the release of version x.y.  The version of the "
         "project included here post-dates the license change.",
         "licenseConcluded": "(LGPL-2.0-only OR LicenseRef-3)",
         "licenseDeclared": "(LGPL-2.0-only AND LicenseRef-3)",
         "licenseInfoFromFiles": ["GPL-2.0-only", "LicenseRef-2", "LicenseRef-1", "NOASSERTION"],
         "name": "glibc",
-        "originator": "Organization: ExampleCodeInspect (contact@example.com)",
+        "originator": originator,
         "packageFileName": "glibc-2.11.1.tar.gz",
         "packageVerificationCode": {
             "packageVerificationCodeExcludedFiles": ["./package.spdx"],
@@ -79,7 +140,7 @@ def test_parse_package():
         "releaseDate": "2012-01-29T18:30:22Z",
         "sourceInfo": "uses glibc-2_11-branch from git://sourceware.org/git/glibc.git.",
         "summary": "GNU C library.",
-        "supplier": "Person: Jane Doe (jane.doe@example.com)",
+        "supplier": supplier,
         "validUntilDate": "2014-01-29T18:30:22Z",
         "versionInfo": "2.11.1",
     }
@@ -88,11 +149,11 @@ def test_parse_package():
 
     assert package.spdx_id == "SPDXRef-Package"
     assert package.name == "glibc"
-    assert package.download_location == "http://ftp.gnu.org/gnu/glibc/glibc-ports-2.15.tar.gz"
+    assert package.download_location == expected_download_location
     assert package.version == "2.11.1"
     assert package.file_name == "glibc-2.11.1.tar.gz"
-    assert package.supplier == Actor(ActorType.PERSON, "Jane Doe", "jane.doe@example.com")
-    assert package.originator == Actor(ActorType.ORGANIZATION, "ExampleCodeInspect", "contact@example.com")
+    assert package.supplier == expected_supplier
+    assert package.originator == expected_originator
     assert package.files_analyzed is True
     assert package.verification_code == PackageVerificationCode(
         value="d6a770ba38583ed4bb4525bd96e50461655d2758", excluded_files=["./package.spdx"]
@@ -110,7 +171,7 @@ def test_parse_package():
             ),
         ],
     )
-    assert package.homepage == "http://ftp.gnu.org/gnu/glibc"
+    assert package.homepage == expected_homepage
     assert package.source_info == "uses glibc-2_11-branch from git://sourceware.org/git/glibc.git."
     assert package.license_concluded == Licensing().parse("(LGPL-2.0-only OR LicenseRef-3)")
     TestCase().assertCountEqual(
@@ -128,7 +189,7 @@ def test_parse_package():
         == "The license for this project changed with the release of version x.y.  The version of the project included"
         " here post-dates the license change."
     )
-    assert package.copyright_text == "Copyright 2008-2010 John Smith"
+    assert package.copyright_text == expected_copyright_text
     assert package.summary == "GNU C library."
     assert (
         package.description
@@ -174,8 +235,8 @@ def test_parse_package():
             [
                 "Error while constructing Package: ['SetterError Package: type of "
                 "argument \"name\" must be str; got NoneType instead: None', 'SetterError Package: type of argument "
-                '"download_location" must be one of (str, spdx.model.spdx_no_assertion.SpdxNoAssertion, '
-                "spdx.model.spdx_none.SpdxNone); "
+                '"download_location" must be one of (str, spdx_tools.spdx.model.spdx_no_assertion.SpdxNoAssertion, '
+                "spdx_tools.spdx.model.spdx_none.SpdxNone); "
                 "got NoneType instead: None']"
             ],
         ),
@@ -253,7 +314,7 @@ def test_parse_external_ref():
         [
             "Error while constructing ExternalPackageRef: ['SetterError "
             'ExternalPackageRef: type of argument "category" must be '
-            "spdx.model.package.ExternalPackageRefCategory; got NoneType instead: None', "
+            "spdx_tools.spdx.model.package.ExternalPackageRefCategory; got NoneType instead: None', "
             '\'SetterError ExternalPackageRef: type of argument "locator" must be str; '
             "got NoneType instead: None']"
         ],

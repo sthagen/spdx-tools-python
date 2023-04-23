@@ -6,12 +6,20 @@ from unittest import TestCase
 import pytest
 from license_expression import Licensing
 
-from spdx.model.spdx_no_assertion import SpdxNoAssertion
-from spdx.parser.error import SPDXParsingError
-from spdx.parser.jsonlikedict.snippet_parser import SnippetParser
+from spdx_tools.spdx.model import SpdxNoAssertion, SpdxNone
+from spdx_tools.spdx.parser.error import SPDXParsingError
+from spdx_tools.spdx.parser.jsonlikedict.snippet_parser import SnippetParser
 
 
-def test_parse_snippet():
+@pytest.mark.parametrize(
+    "copyright_text, expected_copyright_text",
+    [
+        ("Copyright 2008-2010 John Smith", "Copyright 2008-2010 John Smith"),
+        ("NOASSERTION", SpdxNoAssertion()),
+        ("NONE", SpdxNone()),
+    ],
+)
+def test_parse_snippet(copyright_text, expected_copyright_text):
     snippet_parser = SnippetParser()
 
     snippet_dict = {
@@ -19,7 +27,7 @@ def test_parse_snippet():
         "comment": "This snippet was identified as significant and highlighted in this Apache-2.0 file, when a "
         "commercial scanner identified it as being derived from file foo.c in package xyz which is licensed"
         " under GPL-2.0.",
-        "copyrightText": "Copyright 2008-2010 John Smith",
+        "copyrightText": copyright_text,
         "licenseComments": "The concluded license was taken from package xyz, from which the snippet was copied into "
         "the current file. The concluded license information was found in the COPYING.txt file in "
         "package xyz.",
@@ -48,7 +56,7 @@ def test_parse_snippet():
         == "This snippet was identified as significant and highlighted in this Apache-2.0 file, when a commercial "
         "scanner identified it as being derived from file foo.c in package xyz which is licensed under GPL-2.0."
     )
-    assert snippet.copyright_text == "Copyright 2008-2010 John Smith"
+    assert snippet.copyright_text == expected_copyright_text
     assert (
         snippet.license_comment
         == "The concluded license was taken from package xyz, from which the snippet was copied into the current file."
