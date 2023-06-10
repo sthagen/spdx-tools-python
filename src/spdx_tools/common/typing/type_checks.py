@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 spdx contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+from dataclasses import fields
 from typing import Any, Dict
 
 from spdx_tools.common.typing.constructor_type_errors import ConstructorTypeErrors
@@ -14,7 +18,8 @@ def check_types_and_set_values(instance_under_construction: Any, local_variables
     https://youtrack.jetbrains.com/issue/PY-34569
     """
     errors = []
-    for key, value_type in instance_under_construction.__annotations__.items():
+    for field in fields(instance_under_construction):
+        key = field.name
         value = local_variables.get(key)
         try:
             setattr(instance_under_construction, key, value)
