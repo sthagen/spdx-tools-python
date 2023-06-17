@@ -35,7 +35,12 @@ from spdx_tools.spdx3.model import (
 )
 from spdx_tools.spdx3.model.ai.ai_package import AIPackage, SafetyRiskAssessmentType
 from spdx_tools.spdx3.model.build import Build
-from spdx_tools.spdx3.model.dataset.dataset import ConfidentialityLevelType, Dataset, DatasetAvailabilityType
+from spdx_tools.spdx3.model.dataset.dataset import (
+    ConfidentialityLevelType,
+    Dataset,
+    DatasetAvailabilityType,
+    DatasetType,
+)
 from spdx_tools.spdx3.model.licensing import (
     CustomLicense,
     CustomLicenseAddition,
@@ -96,9 +101,9 @@ def creation_info_fixture(
         spec_version=spec_version,
         created=created,
         created_by=created_by,
-        created_using=created_using,
         profile=profile,
         data_license=data_license,
+        created_using=created_using,
         comment=comment,
     )
 
@@ -206,7 +211,7 @@ ELEMENT_DICT = {
     "description": "elementDescription",
     "comment": "elementComment",
     "verified_using": [hash_fixture()],
-    "external_references": [external_reference_fixture()],
+    "external_reference": [external_reference_fixture()],
     "external_identifier": [external_identifier_fixture()],
     "extension": "extensionPlaceholder",
 }
@@ -297,32 +302,32 @@ CVSS_V2_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
     "score": "4.3",
     "severity": "low",
     "vector": "(AV:N/AC:M/Au:N/C:P/I:N/A:N)",
-    "relationship_type": RelationshipType.HAS_CVSS_V2_ASSESSMENT_FOR,
+    "relationship_type": RelationshipType.HAS_ASSESSMENT_FOR,
 }
 
 CVSS_V3_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
     "score": "6.8",
     "severity": "medium",
     "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:N/A:N",
-    "relationship_type": RelationshipType.HAS_CVSS_V3_ASSESSMENT_FOR,
+    "relationship_type": RelationshipType.HAS_ASSESSMENT_FOR,
 }
 
 EPSS_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
     "probability": 80,
     "severity": "high",
-    "relationship_type": RelationshipType.HAS_EPSS_ASSESSMENT_FOR,
+    "relationship_type": RelationshipType.HAS_ASSESSMENT_FOR,
 }
 
 SSVC_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
-    "decision": SsvcDecisionType.ACT,
-    "relationship_type": RelationshipType.HAS_SSVC_ASSESSMENT_FOR,
+    "decision_type": SsvcDecisionType.ACT,
+    "relationship_type": RelationshipType.HAS_ASSESSMENT_FOR,
 }
 
 EXPLOIT_CATALOG_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
     "catalog_type": ExploitCatalogType.KEV,
     "exploited": True,
     "locator": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
-    "relationship_type": RelationshipType.HAS_EXPLOIT_CATALOG_ASSESSMENT_FOR,
+    "relationship_type": RelationshipType.HAS_ASSESSMENT_FOR,
 }
 
 VEX_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
@@ -337,7 +342,7 @@ VEX_AFFECTED_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
 }
 
 VEX_NOT_AFFECTED_VULN_ASSESSMENT_RELATIONSHIP_DICT = {
-    "justification": VexJustificationType.COMPONENT_NOT_PRESENT,
+    "justification_type": VexJustificationType.COMPONENT_NOT_PRESENT,
     "impact_statement": "Not using this vulnerable part of this library.",
     "impact_statement_time": datetime(2015, 10, 15),
     "relationship_type": RelationshipType.DOES_NOT_AFFECT,
@@ -380,7 +385,8 @@ ARTIFACT_DICT = {
 
 SOFTWARE_ARTIFACT_DICT = {
     "content_identifier": "https://spdx.test/tools-python/contentIdentifier",
-    "purpose": [SoftwarePurpose.OTHER],
+    "primary_purpose": SoftwarePurpose.SOURCE,
+    "additional_purpose": [SoftwarePurpose.OTHER],
     "concluded_license": listed_license_fixture(),
     "declared_license": listed_license_fixture(),
     "copyright_text": "copyrightText",
@@ -405,7 +411,7 @@ SOFTWARE_DEPENDENCY_RELATIONSHIP_DICT = {
 }
 
 DATASET_DICT = {
-    "dataset_type": "DatasetType",
+    "dataset_type": [DatasetType.OTHER],
     "data_collection_process": "DatasetDataCollectionProcess",
     "intended_use": "DatasetIntendedUse",
     "dataset_size": 10,

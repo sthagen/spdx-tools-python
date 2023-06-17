@@ -1,8 +1,7 @@
 # SPDX-FileCopyrightText: 2023 spdx contributors
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List
-
+from beartype.typing import List
 from semantic_version import Version
 
 from spdx_tools.spdx3.bump_from_spdx2.actor import bump_actor
@@ -37,9 +36,8 @@ def bump_creation_info(spdx2_creation_info: Spdx2_CreationInfo, payload: Payload
         spec_version=Version("3.0.0"),
         created=spdx2_creation_info.created,
         created_by=[],
-        created_using=[],
         profile=[ProfileIdentifier.CORE, ProfileIdentifier.SOFTWARE, ProfileIdentifier.LICENSING],
-        data_license=spdx2_creation_info.data_license,
+        data_license="https://spdx.org/licenses/" + spdx2_creation_info.data_license,
     )
 
     # due to creators having a creation_info themselves which inherits from the document's one,
@@ -47,7 +45,7 @@ def bump_creation_info(spdx2_creation_info: Spdx2_CreationInfo, payload: Payload
     creator_ids: List[str] = []
     tool_ids: List[str] = []
     for creator in spdx2_creation_info.creators:
-        bumped_actor_id = bump_actor(creator, payload, creation_info, document_namespace)
+        bumped_actor_id = bump_actor(creator, payload, document_namespace, creation_info)
         if creator.actor_type in [ActorType.PERSON, ActorType.ORGANIZATION]:
             creator_ids.append(bumped_actor_id)
         else:
@@ -71,7 +69,7 @@ def bump_creation_info(spdx2_creation_info: Spdx2_CreationInfo, payload: Payload
         name=spdx2_creation_info.name,
         comment=spdx2_creation_info.document_comment,
         element=[],
-        root_element=[spdx_id],
+        root_element=[],
         imports=imports,
         namespaces=namespaces,
     )

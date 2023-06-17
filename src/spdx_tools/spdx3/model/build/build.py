@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import field
 from datetime import datetime
-from typing import Dict, List, Optional
+
+from beartype.typing import Dict, List, Optional
 
 from spdx_tools.common.typing.dataclass_with_properties import dataclass_with_properties
 from spdx_tools.common.typing.type_checks import check_types_and_set_values
@@ -32,7 +33,7 @@ class Build(Element):
         description: Optional[str] = None,
         comment: Optional[str] = None,
         verified_using: List[IntegrityMethod] = None,
-        external_references: List[ExternalReference] = None,
+        external_reference: List[ExternalReference] = None,
         external_identifier: List[ExternalIdentifier] = None,
         extension: Optional[str] = None,
         build_id: Optional[str] = None,
@@ -45,7 +46,7 @@ class Build(Element):
         environment: Dict[str, str] = None,
     ):
         verified_using = [] if verified_using is None else verified_using
-        external_references = [] if external_references is None else external_references
+        external_reference = [] if external_reference is None else external_reference
         external_identifier = [] if external_identifier is None else external_identifier
         config_source_entrypoint = [] if config_source_entrypoint is None else config_source_entrypoint
         config_source_uri = [] if config_source_uri is None else config_source_uri

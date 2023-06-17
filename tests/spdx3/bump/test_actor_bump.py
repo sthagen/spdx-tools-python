@@ -37,10 +37,10 @@ from spdx_tools.spdx.model.actor import Actor, ActorType
 def test_bump_actor(actor_type, actor_name, actor_mail, element_type, new_spdx_id):
     payload = Payload()
     document_namespace = "https://doc.namespace"
-    creation_info = CreationInfo(Version("3.0.0"), datetime(2022, 1, 1), ["Creator"], [], [ProfileIdentifier.CORE])
+    creation_info = CreationInfo(Version("3.0.0"), datetime(2022, 1, 1), ["Creator"], [ProfileIdentifier.CORE])
     actor = Actor(actor_type, actor_name, actor_mail)
 
-    agent_or_tool_id = bump_actor(actor, payload, creation_info, document_namespace)
+    agent_or_tool_id = bump_actor(actor, payload, document_namespace, creation_info)
     agent_or_tool = payload.get_element(agent_or_tool_id)
 
     assert isinstance(agent_or_tool, element_type)
@@ -54,8 +54,8 @@ def test_bump_actor(actor_type, actor_name, actor_mail, element_type, new_spdx_i
 
 
 def test_bump_actor_that_already_exists():
-    creation_info_old = CreationInfo(Version("3.0.0"), datetime(2022, 1, 1), ["Creator"], [], [ProfileIdentifier.CORE])
-    creation_info_new = CreationInfo(Version("3.0.0"), datetime(2023, 2, 2), ["Creator"], [], [ProfileIdentifier.CORE])
+    creation_info_old = CreationInfo(Version("3.0.0"), datetime(2022, 1, 1), ["Creator"], [ProfileIdentifier.CORE])
+    creation_info_new = CreationInfo(Version("3.0.0"), datetime(2023, 2, 2), ["Creator"], [ProfileIdentifier.CORE])
 
     name = "some name"
     document_namespace = "https://doc.namespace"
@@ -68,7 +68,7 @@ def test_bump_actor_that_already_exists():
     )
 
     actor = Actor(ActorType.PERSON, name, "some@mail.com")
-    agent_spdx_id = bump_actor(actor, payload, creation_info_new, document_namespace)
+    agent_spdx_id = bump_actor(actor, payload, document_namespace, creation_info_new)
 
     # assert that there is only one Person in the payload
     assert (

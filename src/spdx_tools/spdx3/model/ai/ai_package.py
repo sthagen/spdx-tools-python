@@ -4,7 +4,8 @@
 from dataclasses import field
 from datetime import datetime
 from enum import Enum, auto
-from typing import Dict, List, Optional
+
+from beartype.typing import Dict, List, Optional
 
 from spdx_tools.common.typing.dataclass_with_properties import dataclass_with_properties
 from spdx_tools.common.typing.type_checks import check_types_and_set_values
@@ -45,14 +46,14 @@ class AIPackage(Package):
         supplied_by: List[str],
         download_location: str,
         package_version: str,
-        purpose: List[SoftwarePurpose],
+        primary_purpose: SoftwarePurpose,
         release_time: datetime,
         creation_info: Optional[CreationInfo] = None,
         summary: Optional[str] = None,
         description: Optional[str] = None,
         comment: Optional[str] = None,
         verified_using: List[IntegrityMethod] = None,
-        external_references: List[ExternalReference] = None,
+        external_reference: List[ExternalReference] = None,
         external_identifier: List[ExternalIdentifier] = None,
         extension: Optional[str] = None,
         originated_by: List[str] = None,
@@ -60,6 +61,7 @@ class AIPackage(Package):
         valid_until_time: Optional[datetime] = None,
         standard: List[str] = None,
         content_identifier: Optional[str] = None,
+        additional_purpose: List[SoftwarePurpose] = None,
         concluded_license: Optional[LicenseField] = None,
         declared_license: Optional[LicenseField] = None,
         copyright_text: Optional[str] = None,
@@ -84,9 +86,10 @@ class AIPackage(Package):
         safety_risk_assessment: Optional[SafetyRiskAssessmentType] = None,
     ):
         verified_using = [] if verified_using is None else verified_using
-        external_references = [] if external_references is None else external_references
+        external_reference = [] if external_reference is None else external_reference
         external_identifier = [] if external_identifier is None else external_identifier
         originated_by = [] if originated_by is None else originated_by
+        additional_purpose = [] if additional_purpose is None else additional_purpose
         standard = [] if standard is None else standard
         standard_compliance = [] if standard_compliance is None else standard_compliance
         type_of_model = [] if type_of_model is None else type_of_model

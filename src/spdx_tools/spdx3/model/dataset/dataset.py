@@ -4,13 +4,31 @@
 from dataclasses import field
 from datetime import datetime
 from enum import Enum, auto
-from typing import Dict, List, Optional
+
+from beartype.typing import Dict, List, Optional
 
 from spdx_tools.common.typing.dataclass_with_properties import dataclass_with_properties
 from spdx_tools.common.typing.type_checks import check_types_and_set_values
 from spdx_tools.spdx3.model import CreationInfo, ExternalIdentifier, ExternalReference, IntegrityMethod
 from spdx_tools.spdx3.model.licensing import LicenseField
 from spdx_tools.spdx3.model.software import Package, SoftwarePurpose
+
+
+class DatasetType(Enum):
+    STRUCTURED = auto()
+    NUMERIC = auto()
+    TEXT = auto()
+    CATEGORICAL = auto()
+    GRAPH = auto()
+    TIMESERIES = auto()
+    TIMESTAMP = auto()
+    SENSOR = auto()
+    IMAGE = auto()
+    SYNTACTIC = auto()
+    AUDIO = auto()
+    VIDEO = auto()
+    OTHER = auto()
+    NO_ASSERTION = auto()
 
 
 class ConfidentialityLevelType(Enum):
@@ -30,7 +48,7 @@ class DatasetAvailabilityType(Enum):
 
 @dataclass_with_properties
 class Dataset(Package):
-    dataset_type: str = None
+    dataset_type: List[DatasetType] = None
     data_collection_process: Optional[str] = None
     intended_use: Optional[str] = None
     dataset_size: Optional[int] = None
@@ -50,22 +68,23 @@ class Dataset(Package):
         name: str,
         originated_by: List[str],
         download_location: str,
-        purpose: List[SoftwarePurpose],
+        primary_purpose: SoftwarePurpose,
         built_time: datetime,
         release_time: datetime,
-        dataset_type: str,
+        dataset_type: List[DatasetType],
         creation_info: Optional[CreationInfo] = None,
         summary: Optional[str] = None,
         description: Optional[str] = None,
         comment: Optional[str] = None,
         verified_using: List[IntegrityMethod] = None,
-        external_references: List[ExternalReference] = None,
+        external_reference: List[ExternalReference] = None,
         external_identifier: List[ExternalIdentifier] = None,
         extension: Optional[str] = None,
         supplied_by: List[str] = None,
         valid_until_time: Optional[datetime] = None,
         standard: List[str] = None,
         content_identifier: Optional[str] = None,
+        additional_purpose: List[SoftwarePurpose] = None,
         concluded_license: Optional[LicenseField] = None,
         declared_license: Optional[LicenseField] = None,
         copyright_text: Optional[str] = None,
@@ -88,9 +107,10 @@ class Dataset(Package):
         dataset_availability: Optional[DatasetAvailabilityType] = None,
     ):
         verified_using = [] if verified_using is None else verified_using
-        external_references = [] if external_references is None else external_references
+        external_reference = [] if external_reference is None else external_reference
         external_identifier = [] if external_identifier is None else external_identifier
         originated_by = [] if originated_by is None else originated_by
+        additional_purpose = [] if additional_purpose is None else additional_purpose
         supplied_by = [] if supplied_by is None else supplied_by
         standard = [] if standard is None else standard
         data_preprocessing = [] if data_preprocessing is None else data_preprocessing

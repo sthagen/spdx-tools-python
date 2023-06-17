@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import field
 from enum import Enum, auto
-from typing import List, Optional
+
+from beartype.typing import List, Optional
 
 from spdx_tools.common.typing.dataclass_with_properties import dataclass_with_properties
 from spdx_tools.common.typing.type_checks import check_types_and_set_values
@@ -15,23 +16,39 @@ class ExternalReferenceType(Enum):
     BINARY_ARTIFACT = auto()
     BUILD_META = auto()
     BUILD_SYSTEM = auto()
+    CERTIFICATION_REPORT = auto()
     CHAT = auto()
+    COMPONENT_ANALYSIS_REPORT = auto()
     DOCUMENTATION = auto()
+    DYNAMIC_ANALYSIS_REPORT = auto()
+    EOL_NOTICE = auto()
     FUNDING = auto()
     ISSUE_TRACKER = auto()
+    LICENSE = auto()
     MAILING_LIST = auto()
     METRICS = auto()
-    LICENSE = auto()
     OTHER = auto()
-    RELEASE_NOTES = auto()
+    PRODUCT_METADATA = auto()
+    QUALITY_ASSESSMENT_REPORT = auto()
     RELEASE_HISTORY = auto()
+    RELEASE_NOTES = auto()
+    RISK_ASSESSMENT = auto()
+    RUNTIME_ANALYSIS_REPORT = auto()
+    SECURE_SOFTWARE_ATTESTATION = auto()
+    SECURITY_ADVERSARY_MODEL = auto()
     SECURITY_ADVISORY = auto()
     SECURITY_FIX = auto()
     SECURITY_OTHER = auto()
+    SECURITY_PEN_TEST_REPORT = auto()
+    SECURITY_POLICY = auto()
+    SECURITY_THREAT_MODEL = auto()
     SOCIAL_MEDIA = auto()
     SOURCE_ARTIFACT = auto()
+    STATIC_ANALYSIS_REPORT = auto()
     SUPPORT = auto()
     VCS = auto()
+    VULNERABILITY_DISCLOSURE_REPORT = auto()
+    VULNERABILITY_EXPLOITABILITY_ASSESSMENT = auto()
 
 
 @dataclass_with_properties

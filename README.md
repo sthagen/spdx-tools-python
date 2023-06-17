@@ -50,14 +50,15 @@ additional installation of optional dependencies
 * Serialize to JSON-LD
 
 See [Quickstart to SPDX 3.0](#quickstart-to-spdx-30) below.  
-The implementation is based on the descriptive markdown files in the repository https://github.com/spdx/spdx-3-model (latest commit: ea2e1446ae937c6722b3f599f95813f8747d54b4).
+The implementation is based on the descriptive markdown files in the repository https://github.com/spdx/spdx-3-model (latest commit: a5372a3c145dbdfc1381fc1f791c68889aafc7ff).
 
 
 # Installation
 
 As always you should work in a virtualenv (venv). You can install a local clone
-of this repo with `yourenv/bin/pip install .` or install it from PyPI with
-`yourenv/bin/pip install spdx-tools`. Note that on Windows it would be `Scripts`
+of this repo with `yourenv/bin/pip install .` or install it from PyPI 
+(check for the [newest release](https://pypi.org/project/spdx-tools/#history) and install it like
+`yourenv/bin/pip install spdx-tools==0.8.0a2`). Note that on Windows it would be `Scripts`
 instead of `bin`.
 
 # How to use

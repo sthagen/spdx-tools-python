@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2023 spdx contributors
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import TextIO
+from beartype.typing import TextIO
 
 from spdx_tools.spdx3.model import Element
 from spdx_tools.spdx3.writer.console.console import write_value
@@ -26,8 +26,8 @@ def write_element_properties(element: Element, text_output: TextIO):
         # as soon as there are more inherited classes we need to implement a logic
         # that determines the correct write function for the "integrity_method" object
         write_hash(integrity_method, text_output, heading=False)
-    write_optional_heading(element.external_references, "External References\n", text_output)
-    for external_reference in element.external_references:
+    write_optional_heading(element.external_reference, "External Reference\n", text_output)
+    for external_reference in element.external_reference:
         write_external_reference(external_reference, text_output)
     write_optional_heading(element.external_identifier, "External Identifier\n", text_output)
     for external_identifier in element.external_identifier:
